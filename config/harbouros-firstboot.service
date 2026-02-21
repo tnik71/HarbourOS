@@ -1,0 +1,13 @@
+[Unit]
+Description=HarbourOS First Boot Setup
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/etc/harbouros/.setup-complete
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'echo "HarbourOS first boot. Visit http://harbouros.local:8080 to complete setup."'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
