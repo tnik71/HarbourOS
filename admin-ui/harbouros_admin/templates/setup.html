@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HarbourOS — Setup</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main class="container setup-container">
+        <div class="setup-header">
+            <h1>Welcome to <span class="topbar-brand-harbour">Harbour</span><span class="topbar-brand-os">OS</span></h1>
+            <p>Let's set up your Plex Media Server in a few quick steps.</p>
+        </div>
+
+        <!-- Step 0: Set Password -->
+        <div class="setup-step" id="step-0">
+            <h2>Step 1: Secure Your Server</h2>
+            <p>Change the default password to protect your HarbourOS server.</p>
+            <form id="setup-password-form" class="form">
+                <div class="form-group">
+                    <label for="setup-new-pass">New Password</label>
+                    <input type="password" id="setup-new-pass" placeholder="Choose a strong password" required minlength="4">
+                </div>
+                <div class="form-group">
+                    <label for="setup-confirm-pass">Confirm Password</label>
+                    <input type="password" id="setup-confirm-pass" placeholder="Re-enter password" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Set Password & Continue</button>
+                </div>
+                <div id="setup-pass-msg" class="message" style="display:none"></div>
+            </form>
+        </div>
+
+        <!-- Step 1: NAS Configuration -->
+        <div class="setup-step" id="step-1" style="display:none">
+            <h2>Step 2: Connect Your NAS</h2>
+            <p>Enter your NAS details to mount media folders.</p>
+            <form id="setup-nas-form" class="form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="setup-host">NAS IP Address</label>
+                        <input type="text" id="setup-host" placeholder="e.g. 192.168.1.100" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-type">Protocol</label>
+                        <select id="setup-type">
+                            <option value="nfs">NFS (recommended)</option>
+                            <option value="smb">SMB/CIFS</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="setup-share">Share Path</label>
+                    <input type="text" id="setup-share" placeholder="e.g. /media/Movies" required>
+                </div>
+                <div class="form-group">
+                    <label for="setup-name">Mount Name</label>
+                    <input type="text" id="setup-name" placeholder="e.g. Movies" required>
+                </div>
+                <div id="setup-smb-fields" style="display:none">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="setup-user">Username</label>
+                            <input type="text" id="setup-user">
+                        </div>
+                        <div class="form-group">
+                            <label for="setup-pass">Password</label>
+                            <input type="password" id="setup-pass">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="setupTestConnection()">Test Connection</button>
+                    <button type="submit" class="btn btn-primary">Add Mount & Continue</button>
+                </div>
+                <div id="setup-test-result" class="message" style="display:none"></div>
+            </form>
+        </div>
+
+        <!-- Step 2: Verify Plex -->
+        <div class="setup-step" id="step-2" style="display:none">
+            <h2>Step 3: Set Up Plex</h2>
+            <p>Plex Media Server is running. Click below to complete the Plex setup in its own interface.</p>
+            <div class="card">
+                <div class="status-badge status-ok" id="setup-plex-status">Plex is Running</div>
+                <p style="margin-top:1rem">In the Plex interface, sign in and add your library paths:</p>
+                <ul>
+                    <li id="setup-mount-paths">Your mounted NAS folders will appear under <code>/media/nas/</code></li>
+                </ul>
+                <a id="setup-plex-link" class="btn btn-primary" target="_blank" rel="noopener" style="margin-top:1rem">
+                    Open Plex Web UI
+                </a>
+                <script>
+                    document.getElementById('setup-plex-link').href =
+                        window.location.protocol + '//' + window.location.hostname + ':32400/web';
+                </script>
+            </div>
+            <div class="form-actions" style="margin-top:1.5rem">
+                <button class="btn btn-secondary" onclick="showStep(1)">Back</button>
+                <button class="btn btn-primary" onclick="completeSetup()">Finish Setup</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Done -->
+        <div class="setup-step" id="step-3" style="display:none">
+            <h2>All Done!</h2>
+            <p>Your HarbourOS server is configured and ready to use.</p>
+            <div class="card">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="/">HarbourOS Dashboard</a></li>
+                    <li><a id="final-plex-link" target="_blank" rel="noopener">Plex Web UI</a></li>
+                </ul>
+                <script>
+                    document.getElementById('final-plex-link').href =
+                        window.location.protocol + '//' + window.location.hostname + ':32400/web';
+                </script>
+            </div>
+            <a href="/" class="btn btn-primary" style="margin-top:1.5rem">Go to Dashboard</a>
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    document.getElementById('setup-type').addEventListener('change', function() {
+        document.getElementById('setup-smb-fields').style.display =
+            this.value === 'smb' ? 'block' : 'none';
+    });
+
+    function showStep(n) {
+        document.querySelectorAll('.setup-step').forEach(function(s) { s.style.display = 'none'; });
+        document.getElementById('step-' + n).style.display = 'block';
+    }
+
+    document.getElementById('setup-password-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var newPass = document.getElementById('setup-new-pass').value;
+        var confirmPass = document.getElementById('setup-confirm-pass').value;
+        var el = document.getElementById('setup-pass-msg');
+        if (newPass !== confirmPass) {
+            showMessage(el, 'Passwords do not match', 'error');
+            return;
+        }
+        var res = await api('/api/system/password', 'POST', { current: 'harbouros', new: newPass });
+        if (res && res.success) {
+            showMessage(el, 'Password set!', 'success');
+            setTimeout(function() { showStep(1); }, 1000);
+        } else {
+            showMessage(el, res ? res.message : 'Failed to set password', 'error');
+        }
+    });
+
+    async function setupTestConnection() {
+        var host = document.getElementById('setup-host').value;
+        var type = document.getElementById('setup-type').value;
+        var resultEl = document.getElementById('setup-test-result');
+        if (!host) { showMessage(resultEl, 'Enter NAS IP first', 'error'); return; }
+        showMessage(resultEl, 'Testing...', 'info');
+        var res = await api('/api/mounts/test', 'POST', { host: host, type: type });
+        if (res) {
+            showMessage(resultEl, res.success ? 'Connection OK!' : res.message,
+                        res.success ? 'success' : 'error');
+        }
+    }
+
+    document.getElementById('setup-nas-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var data = {
+            name: document.getElementById('setup-name').value,
+            type: document.getElementById('setup-type').value,
+            host: document.getElementById('setup-host').value,
+            share: document.getElementById('setup-share').value,
+        };
+        if (data.type === 'smb') {
+            data.username = document.getElementById('setup-user').value;
+            data.password = document.getElementById('setup-pass').value;
+        }
+        var res = await api('/api/mounts', 'POST', data);
+        if (res && res.mount) {
+            showStep(2);
+        }
+    });
+
+    async function completeSetup() {
+        await api('/api/setup/complete', 'POST');
+        showStep(3);
+    }
+    </script>
+</body>
+</html>

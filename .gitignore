@@ -1,0 +1,40 @@
+# pi-gen build directory
+pi-gen-build/
+output/*.img
+output/*.img.xz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+admin-ui/venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Claude Code
+.claude/
+
+# Pytest
+.pytest_cache/
+
+# Build output
+images/

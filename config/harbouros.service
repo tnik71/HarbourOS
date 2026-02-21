@@ -1,0 +1,25 @@
+[Unit]
+Description=HarbourOS Admin UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=root
+Group=root
+WorkingDirectory=/opt/harbouros
+ExecStart=/opt/harbouros/venv/bin/gunicorn \
+    --bind 0.0.0.0:8080 \
+    --workers 2 \
+    --timeout 120 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    harbouros_admin.app:app
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+TimeoutStopSec=10
+Environment=PYTHONPATH=/opt/harbouros
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HarbourOS — Login</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H4v-2h2l2-14h8l2 14h2v2h-5'/%3E%3Cpath d='M10 5V3h4v2'/%3E%3Cline x1='12' y1='3' x2='12' y2='1'/%3E%3Cline x1='9' y1='1' x2='15' y2='1'/%3E%3Cline x1='8' y1='12' x2='16' y2='12'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <main class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <span class="topbar-brand-harbour" style="font-size:1.6rem">Harbour</span><span class="topbar-brand-os" style="font-size:1.6rem">OS</span>
+            </div>
+            <p class="text-muted text-sm" style="margin-bottom:1.25rem">Enter your password to continue</p>
+            <form id="login-form" class="form">
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Password" required autofocus>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Login</button>
+                <div id="login-msg" class="message" style="display:none;margin-top:0.75rem"></div>
+            </form>
+        </div>
+    </main>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var password = document.getElementById('login-password').value;
+        var el = document.getElementById('login-msg');
+        var res = await api('/login', 'POST', { password: password });
+        if (res && res.success) {
+            window.location.href = '/';
+        } else {
+            showMessage(el, 'Invalid password', 'error');
+            document.getElementById('login-password').value = '';
+            document.getElementById('login-password').focus();
+        }
+    });
+    </script>
+</body>
+</html>
