@@ -12,7 +12,7 @@ A custom Raspberry Pi OS image that turns a Raspberry Pi 5 into a dedicated Plex
 - First-boot setup wizard
 - Session-based authentication with bcrypt password hashing
 - Docker Plex migration tool (preserves libraries, watch history, metadata)
-- Firewall (nftables) and security hardening
+- Security hardening
 
 ## Architecture
 
@@ -59,7 +59,7 @@ make install-remote PI=192.168.1.50   # install via IP
 make install-remote PI=raspberrypi.local  # install via hostname
 ```
 
-This connects to the Pi, installs all packages (Plex, firewall, etc.), deploys the admin UI, and starts services. The Pi must be running Raspberry Pi OS with SSH enabled.
+This connects to the Pi, installs all packages (Plex, etc.), deploys the admin UI, and starts services. The Pi must be running Raspberry Pi OS with SSH enabled.
 
 ## Migrating from Docker Plex
 
@@ -97,7 +97,7 @@ admin-ui/               Flask application
     templates/          Jinja2 templates
     static/             CSS, JS, images
   tests/                pytest test suite
-config/                 systemd services, nftables, Plex update script
+config/                 systemd services, Plex update script
 scripts/                Deploy and install scripts
 stage-harbouros/           pi-gen build stages
 ```

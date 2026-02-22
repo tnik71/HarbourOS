@@ -53,7 +53,6 @@ apt-get install -y -qq ${APT_OPTS} \
     python3 \
     python3-venv \
     python3-pip \
-    nftables \
     curl
 
 # =============================================
@@ -201,10 +200,6 @@ systemctl enable avahi-daemon.service
 echo ""
 echo "[6/7] Applying security hardening..."
 
-# Firewall
-cp "${STAGING}/config/nftables.conf" /etc/nftables.conf
-systemctl enable nftables.service
-
 # Sysctl
 cp "${STAGING}/config/sysctl-hardening.conf" /etc/sysctl.d/99-harbouros.conf
 sysctl --system >/dev/null 2>&1
@@ -246,7 +241,6 @@ systemctl enable harbouros-firstboot.service
 echo ""
 echo "Starting services..."
 systemctl daemon-reload
-systemctl restart nftables.service
 
 if [ "${PLEX_ALREADY_RUNNING}" -eq 0 ]; then
     systemctl start plexmediaserver.service

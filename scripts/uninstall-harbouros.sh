@@ -88,44 +88,10 @@ rm -f /etc/avahi/services/harbouros.service
 echo "  Removed avahi HarbourOS service"
 
 # =============================================
-# 4. Restore firewall (remove restrictive nftables rules)
+# 4. Restore sysctl settings
 # =============================================
 echo ""
-echo "[4/7] Restoring firewall..."
-
-# Check if nftables has HarbourOS rules
-if grep -q "HarbourOS" /etc/nftables.conf 2>/dev/null; then
-    echo "  Flushing HarbourOS firewall rules..."
-    nft flush ruleset
-    # Write a permissive default config (accept all — CasaOS/Docker manage their own)
-    cat > /etc/nftables.conf << 'EOF'
-#!/usr/sbin/nft -f
-# Default permissive rules (HarbourOS firewall removed)
-flush ruleset
-
-table inet filter {
-    chain input {
-        type filter hook input priority 0; policy accept;
-    }
-    chain forward {
-        type filter hook forward priority 0; policy accept;
-    }
-    chain output {
-        type filter hook output priority 0; policy accept;
-    }
-}
-EOF
-    nft -f /etc/nftables.conf
-    echo "  Firewall reset to accept-all (CasaOS/Docker handle their own rules)"
-else
-    echo "  No HarbourOS firewall rules found, skipping"
-fi
-
-# =============================================
-# 5. Restore sysctl settings
-# =============================================
-echo ""
-echo "[5/7] Restoring sysctl settings..."
+echo "[4/6] Restoring sysctl settings..."
 
 if [ -f /etc/sysctl.d/99-harbouros.conf ]; then
     rm -f /etc/sysctl.d/99-harbouros.conf
@@ -136,10 +102,10 @@ else
 fi
 
 # =============================================
-# 6. Restore hostname and SSH settings
+# 5. Restore hostname and SSH settings
 # =============================================
 echo ""
-echo "[6/7] Restoring system settings..."
+echo "[5/6] Restoring system settings..."
 
 # Restore hostname if it was changed to harbouros
 CURRENT_HOSTNAME=$(hostname)
@@ -174,10 +140,10 @@ for svc in bluetooth.service triggerhappy.service apt-daily-upgrade.timer apt-da
 done
 
 # =============================================
-# 7. Restore boot config
+# 6. Restore boot config
 # =============================================
 echo ""
-echo "[7/7] Restoring boot configuration..."
+echo "[6/6] Restoring boot configuration..."
 
 # Remove HarbourOS boot tweaks from config.txt
 if [ -f /boot/firmware/config.txt ]; then
