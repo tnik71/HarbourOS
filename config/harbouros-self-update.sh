@@ -4,6 +4,10 @@ LOG="/var/log/harbouros-self-update.log"
 REPO_DIR="/opt/harbouros/repo"
 GITHUB_REPO="https://github.com/tnik71/HarbourOS.git"
 BRANCH="main"
+CHECK_ONLY=0
+if [ "${1:-}" = "--check-only" ]; then
+    CHECK_ONLY=1
+fi
 
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG"
@@ -59,6 +63,12 @@ mkdir -p /var/lib/harbouros
 cat > /var/lib/harbouros/update-status.json << EOF
 {"update_available": true, "current_version": "${OLD_VERSION}", "current_sha": "${LOCAL_SHA:0:8}", "new_version": "${REMOTE_VERSION}", "new_sha": "${REMOTE_SHA:0:8}", "last_check": "$(date -Iseconds)"}
 EOF
+
+if [ "${CHECK_ONLY}" -eq 1 ]; then
+    log "Check-only mode: update available but not applying."
+    tail -200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+    exit 0
+fi
 
 # --- Apply update ---
 log "Applying update..."
