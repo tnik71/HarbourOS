@@ -149,6 +149,20 @@ chmod 755 /etc/harbouros
 cp "${STAGING}/config/harbouros.service" /etc/systemd/system/harbouros.service
 systemctl enable harbouros.service
 
+# Install self-update infrastructure
+echo "  Setting up HarbourOS auto-update..."
+mkdir -p /var/lib/harbouros
+install -m 755 "${STAGING}/config/harbouros-self-update.sh" /usr/local/bin/harbouros-self-update.sh
+cp "${STAGING}/config/harbouros-self-update.service" /etc/systemd/system/harbouros-self-update.service
+cp "${STAGING}/config/harbouros-self-update.timer" /etc/systemd/system/harbouros-self-update.timer
+systemctl enable harbouros-self-update.timer
+
+# Clone the repo for future self-updates
+if [ ! -d /opt/harbouros/repo/.git ]; then
+    echo "  Cloning HarbourOS repo for auto-updates..."
+    git clone --branch main --single-branch https://github.com/tnik71/HarbourOS.git /opt/harbouros/repo 2>/dev/null || echo "  WARNING: Could not clone repo (no internet?). Self-update will clone on first run."
+fi
+
 # =============================================
 # Stage 3: NAS mount infrastructure
 # =============================================

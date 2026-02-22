@@ -8,6 +8,8 @@ import time
 import psutil
 
 PLEX_UPDATE_LOG = "/var/log/harbouros-plex-update.log"
+HARBOUROS_UPDATE_STATUS = "/var/lib/harbouros/update-status.json"
+HARBOUROS_UPDATE_LOG = "/var/log/harbouros-self-update.log"
 
 MONITORED_SERVICES = [
     "plexmediaserver",
@@ -254,6 +256,54 @@ def get_plex_update_log():
         ]
     try:
         with open(PLEX_UPDATE_LOG) as f:
+            return f.read().strip().split("\n")
+    except FileNotFoundError:
+        return ["No update log found."]
+
+
+def get_harbouros_update_status():
+    """Read the HarbourOS self-update status file."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return {
+            "update_available": False,
+            "current_version": "1.0.0",
+            "current_sha": "abc1234",
+            "last_check": "2025-06-15T01:00:00+00:00",
+        }
+    try:
+        with open(HARBOUROS_UPDATE_STATUS) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {
+            "update_available": False,
+            "current_version": "unknown",
+            "current_sha": "unknown",
+            "last_check": None,
+        }
+
+
+def trigger_harbouros_update_check():
+    """Manually trigger the HarbourOS update check."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return True, "Update check triggered (dev mode)"
+    result = _run(
+        ["/usr/local/bin/harbouros-self-update.sh"],
+        timeout=300,
+    )
+    success = result.returncode == 0
+    output = result.stdout.strip() if success else result.stderr.strip()
+    return success, output
+
+
+def get_harbouros_update_log():
+    """Read the HarbourOS self-update log file."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return [
+            "2025-06-15 01:00:00 Checking for HarbourOS updates...",
+            "2025-06-15 01:00:02 HarbourOS is up to date (1.0.0, abc1234). No action needed.",
+        ]
+    try:
+        with open(HARBOUROS_UPDATE_LOG) as f:
             return f.read().strip().split("\n")
     except FileNotFoundError:
         return ["No update log found."]

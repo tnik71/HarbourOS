@@ -188,17 +188,17 @@ async function updateWidgets() {
         if (ipEl) ipEl.textContent = net.ip_address;
     }
 
-    // Check for OS updates (less frequently — piggyback on widget refresh)
+    // Check for OS + HarbourOS updates (piggyback on widget refresh)
     var updates = await api('/api/system/update/status');
-    if (updates) {
-        var badge = document.getElementById('topbar-updates');
-        if (badge) {
-            if (updates.available > 0) {
-                badge.style.display = 'inline-flex';
-                badge.querySelector('.update-count').textContent = updates.available;
-            } else {
-                badge.style.display = 'none';
-            }
+    var hosUpdate = await api('/api/harbouros/update/status');
+    var totalUpdates = (updates ? updates.available : 0) + (hosUpdate && hosUpdate.update_available ? 1 : 0);
+    var badge = document.getElementById('topbar-updates');
+    if (badge) {
+        if (totalUpdates > 0) {
+            badge.style.display = 'inline-flex';
+            badge.querySelector('.update-count').textContent = totalUpdates;
+        } else {
+            badge.style.display = 'none';
         }
     }
 }
@@ -622,7 +622,7 @@ function showSystemTab(name, btn) {
     // Load tab content
     if (name === 'services') loadServiceStatuses();
     if (name === 'logs') loadSystemLogs();
-    if (name === 'updates') checkUpdates();
+    if (name === 'updates') { checkHarbourOSUpdate(); checkUpdates(); }
     if (name === 'storage') loadStorageDetails();
 }
 
@@ -699,6 +699,70 @@ async function runSystemUpdate() {
         logEl.scrollTop = logEl.scrollHeight;
         showMessage(msgEl, res.success ? 'Update completed successfully!' : 'Update failed.', res.success ? 'success' : 'error');
         if (res.success) setTimeout(checkUpdates, 2000);
+    }
+}
+
+/* === HarbourOS Self-Update === */
+async function checkHarbourOSUpdate() {
+    var el = document.getElementById('harbouros-update-status');
+    if (el) el.innerHTML = '<span class="spinner"></span>Checking for HarbourOS updates...';
+    var res = await api('/api/harbouros/update/status');
+    if (!res || !el) return;
+    var btn = document.getElementById('btn-harbouros-update');
+    if (res.update_available) {
+        el.innerHTML = '<strong>Update available!</strong> ' +
+            esc(res.current_version) + ' \u2192 ' + esc(res.new_version) +
+            '<div class="text-sm text-muted" style="margin-top:0.3rem">' +
+            'Current: ' + esc(res.current_sha) + ' \u2192 New: ' + esc(res.new_sha) + '</div>';
+        if (btn) btn.style.display = '';
+    } else {
+        el.innerHTML = 'HarbourOS is up to date.' +
+            '<div class="text-sm text-muted" style="margin-top:0.3rem">' +
+            'Version ' + esc(res.current_version || 'unknown') +
+            ' (' + esc(res.current_sha || 'unknown') + ')' +
+            (res.last_check ? ' \u2022 Last checked: ' + new Date(res.last_check).toLocaleString() : '') +
+            '</div>';
+        if (btn) btn.style.display = 'none';
+    }
+    if (res.last_error) {
+        el.innerHTML += '<div class="text-sm" style="color:var(--error);margin-top:0.3rem">' + esc(res.last_error) + '</div>';
+    }
+}
+
+async function triggerHarbourOSUpdate() {
+    var btn = document.getElementById('btn-harbouros-update');
+    var msg = document.getElementById('harbouros-update-msg');
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+    showMessage(msg, 'Checking and applying HarbourOS update... This may take a minute.', 'info');
+    var res = await api('/api/harbouros/update', 'POST');
+    btn.disabled = false;
+    btn.textContent = 'Install Update';
+    if (res) {
+        showMessage(msg, res.success ? 'Update applied successfully!' : ('Update failed: ' + (res.message || '')), res.success ? 'success' : 'error');
+        if (res.success) setTimeout(function() { checkHarbourOSUpdate(); }, 3000);
+    }
+}
+
+function toggleHarbourOSLog() {
+    var el = document.getElementById('harbouros-update-logs');
+    if (el) {
+        if (el.style.display === 'none') {
+            el.style.display = 'block';
+            loadHarbourOSLog();
+        } else {
+            el.style.display = 'none';
+        }
+    }
+}
+
+async function loadHarbourOSLog() {
+    var el = document.getElementById('harbouros-update-logs');
+    if (!el) return;
+    var res = await api('/api/harbouros/update-log');
+    if (res && res.logs) {
+        el.textContent = res.logs.join('\n');
+        el.scrollTop = el.scrollHeight;
     }
 }
 
