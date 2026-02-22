@@ -282,6 +282,14 @@ def get_harbouros_update_status():
         }
 
 
+def check_harbouros_update():
+    """Run a fresh check against GitHub (check-only, no apply)."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return get_harbouros_update_status()
+    _run(["/usr/local/bin/harbouros-self-update.sh", "--check-only"], timeout=60)
+    return get_harbouros_update_status()
+
+
 def trigger_harbouros_update_check():
     """Manually trigger the HarbourOS update check."""
     if os.environ.get("HARBOUROS_DEV"):

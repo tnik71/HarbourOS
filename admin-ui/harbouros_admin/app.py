@@ -230,12 +230,19 @@ def create_app():
     def api_harbouros_update_status():
         return jsonify(system_info.get_harbouros_update_status())
 
+    @app.route("/api/harbouros/update/check", methods=["POST"])
+    @login_required
+    def api_harbouros_update_check():
+        return jsonify(system_info.check_harbouros_update())
+
     @app.route("/api/harbouros/update", methods=["POST"])
     @login_required
     def api_harbouros_update():
         success, message = system_info.trigger_harbouros_update_check()
+        log_lines = system_info.get_harbouros_update_log()
+        output = "\n".join(log_lines)
         status_code = 200 if success else 500
-        return jsonify({"success": success, "message": message}), status_code
+        return jsonify({"success": success, "message": message, "output": output}), status_code
 
     @app.route("/api/harbouros/update-log")
     @login_required

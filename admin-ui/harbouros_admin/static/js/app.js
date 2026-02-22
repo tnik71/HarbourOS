@@ -84,9 +84,13 @@ document.addEventListener('keydown', function(e) {
 /* === Clock === */
 function updateClock() {
     var now = new Date();
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var d = now.getDate();
+    var mon = months[now.getMonth()];
+    var y = now.getFullYear();
     var h = String(now.getHours()).padStart(2, '0');
     var m = String(now.getMinutes()).padStart(2, '0');
-    var time = h + ':' + m;
+    var time = d + ' ' + mon + ' ' + y + '  ' + h + ':' + m;
     document.querySelectorAll('.clock').forEach(function(el) {
         el.textContent = time;
     });
@@ -706,8 +710,10 @@ async function runSystemUpdate() {
 async function checkHarbourOSUpdate() {
     var el = document.getElementById('harbouros-update-status');
     if (el) el.innerHTML = '<span class="spinner"></span>Checking for HarbourOS updates...';
-    var res = await api('/api/harbouros/update/status');
+    var res = await api('/api/harbouros/update/check', 'POST');
     if (!res || !el) return;
+    var dockVer = document.getElementById('dock-version');
+    if (dockVer && res.current_version) dockVer.textContent = 'v' + res.current_version;
     var btn = document.getElementById('btn-harbouros-update');
     if (res.update_available) {
         el.innerHTML = '<strong>Update available!</strong> ' +
@@ -742,8 +748,9 @@ async function triggerHarbourOSUpdate() {
     btn.disabled = false;
     btn.textContent = 'Install Update';
     if (res) {
+        logEl.textContent = res.output || '';
+        logEl.scrollTop = logEl.scrollHeight;
         showMessage(msg, res.success ? 'Update applied successfully!' : ('Update failed: ' + (res.message || '')), res.success ? 'success' : 'error');
-        await loadHarbourOSLog();
         if (res.success) setTimeout(function() { checkHarbourOSUpdate(); }, 3000);
     }
 }
