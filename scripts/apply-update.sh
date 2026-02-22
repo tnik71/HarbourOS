@@ -35,7 +35,7 @@ if [ -f "${STAGING}/requirements.txt" ]; then
 fi
 
 # --- Systemd units ---
-for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-firstboot.service; do
+for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-self-update.service harbouros-self-update.timer harbouros-firstboot.service; do
     if [ -f "${STAGING}/config/${unit}" ]; then
         if ! diff -q "${STAGING}/config/${unit}" "/etc/systemd/system/${unit}" >/dev/null 2>&1; then
             echo "  Updating ${unit}..."
@@ -50,6 +50,14 @@ if [ -f "${STAGING}/config/harbouros-plex-update.sh" ]; then
     if ! diff -q "${STAGING}/config/harbouros-plex-update.sh" "/usr/local/bin/harbouros-plex-update.sh" >/dev/null 2>&1; then
         echo "  Updating harbouros-plex-update.sh..."
         install -m 755 "${STAGING}/config/harbouros-plex-update.sh" "/usr/local/bin/harbouros-plex-update.sh"
+    fi
+fi
+
+# --- Self-update script ---
+if [ -f "${STAGING}/config/harbouros-self-update.sh" ]; then
+    if ! diff -q "${STAGING}/config/harbouros-self-update.sh" "/usr/local/bin/harbouros-self-update.sh" >/dev/null 2>&1; then
+        echo "  Updating harbouros-self-update.sh..."
+        install -m 755 "${STAGING}/config/harbouros-self-update.sh" "/usr/local/bin/harbouros-self-update.sh"
     fi
 fi
 

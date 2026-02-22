@@ -1,0 +1,10 @@
+[Unit]
+Description=Check for HarbourOS updates every 6 hours
+
+[Timer]
+OnCalendar=*-*-* 00/6:00:00
+Persistent=true
+RandomizedDelaySec=900
+
+[Install]
+WantedBy=timers.target

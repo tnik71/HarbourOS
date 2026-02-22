@@ -223,6 +223,25 @@ def create_app():
     def api_plex_libraries():
         return jsonify(plex_service.get_libraries())
 
+    # --- API: HarbourOS Self-Update ---
+
+    @app.route("/api/harbouros/update/status")
+    @login_required
+    def api_harbouros_update_status():
+        return jsonify(system_info.get_harbouros_update_status())
+
+    @app.route("/api/harbouros/update", methods=["POST"])
+    @login_required
+    def api_harbouros_update():
+        success, message = system_info.trigger_harbouros_update_check()
+        status_code = 200 if success else 500
+        return jsonify({"success": success, "message": message}), status_code
+
+    @app.route("/api/harbouros/update-log")
+    @login_required
+    def api_harbouros_update_log():
+        return jsonify({"logs": system_info.get_harbouros_update_log()})
+
     # --- API: Mounts ---
 
     @app.route("/api/mounts")

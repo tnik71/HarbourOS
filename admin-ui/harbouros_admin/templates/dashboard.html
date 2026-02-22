@@ -367,7 +367,19 @@
 
             <!-- Updates Tab -->
             <div class="system-tab-content" id="tab-updates" style="display:none">
-                <h2>OS Updates</h2>
+                <h2>HarbourOS Updates</h2>
+                <div id="harbouros-update-status"><span class="spinner"></span>Checking...</div>
+                <div class="form-actions" style="margin-top:0.75rem">
+                    <button class="btn btn-primary btn-sm" id="btn-harbouros-update" onclick="triggerHarbourOSUpdate()" style="display:none">Install Update</button>
+                    <button class="btn btn-secondary btn-sm" onclick="checkHarbourOSUpdate()">Check Now</button>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleHarbourOSLog()">Show Log</button>
+                </div>
+                <div id="harbouros-update-msg" class="message" style="display:none"></div>
+                <pre class="log-viewer" id="harbouros-update-logs" style="display:none;margin-top:0.75rem;max-height:200px">Loading...</pre>
+
+                <hr style="margin:1.25rem 0;border-color:var(--border)">
+
+                <h2>OS Package Updates</h2>
                 <div id="update-status">Checking...</div>
                 <div class="form-actions" style="margin-top:0.75rem">
                     <button class="btn btn-primary btn-sm" id="btn-run-update" onclick="runSystemUpdate()">Install Updates</button>
