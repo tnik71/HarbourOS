@@ -14,7 +14,6 @@ HARBOUROS_UPDATE_LOG = "/var/log/harbouros-self-update.log"
 MONITORED_SERVICES = [
     "plexmediaserver",
     "harbouros",
-    "nftables",
     "avahi-daemon",
     "sshd",
 ]
@@ -46,7 +45,6 @@ def _mock_run(cmd):
                 "2025-01-01T00:00:02+00:00 harbouros gunicorn[100]: Listening on 0.0.0.0:8080\n"
                 "2025-01-01T00:00:03+00:00 harbouros plexmediaserver[200]: Plex Media Server starting\n"
                 "2025-01-01T00:00:04+00:00 harbouros avahi-daemon[50]: Registering harbouros.local\n"
-                "2025-01-01T00:00:05+00:00 harbouros nftables[30]: Firewall rules loaded\n"
             )
         )
     if "is-active" in cmd_str:

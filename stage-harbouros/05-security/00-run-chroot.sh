@@ -3,10 +3,6 @@
 
 echo "HarbourOS: Applying security hardening..."
 
-# Install nftables firewall rules
-cp /tmp/nftables.conf /etc/nftables.conf
-systemctl enable nftables.service
-
 # Install sysctl hardening
 cp /tmp/sysctl-hardening.conf /etc/sysctl.d/99-harbouros.conf
 

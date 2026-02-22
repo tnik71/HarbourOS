@@ -46,7 +46,6 @@ cp "${SCRIPT_DIR}/admin-ui/requirements.txt" "${PI_GEN_DIR}/stage-harbouros/02-a
 # Copy config files into appropriate stage files directories
 echo "Copying config files..."
 cp "${SCRIPT_DIR}/config/harbouros.service" "${PI_GEN_DIR}/stage-harbouros/02-admin-ui/files/"
-cp "${SCRIPT_DIR}/config/nftables.conf" "${PI_GEN_DIR}/stage-harbouros/05-security/files/"
 cp "${SCRIPT_DIR}/config/sysctl-hardening.conf" "${PI_GEN_DIR}/stage-harbouros/05-security/files/"
 cp "${SCRIPT_DIR}/config/avahi/harbouros.service" "${PI_GEN_DIR}/stage-harbouros/04-networking/files/"
 cp "${SCRIPT_DIR}/config/harbouros-firstboot.service" "${PI_GEN_DIR}/stage-harbouros/06-boot-config/files/"

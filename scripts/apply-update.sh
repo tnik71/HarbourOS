@@ -12,7 +12,6 @@ echo "HarbourOS: Applying update..."
 
 NEED_RESTART=0
 NEED_DAEMON_RELOAD=0
-NEED_NFTABLES_RELOAD=0
 NEED_SYSCTL_RELOAD=0
 
 # --- Admin UI code ---
@@ -61,15 +60,6 @@ if [ -f "${STAGING}/config/harbouros-self-update.sh" ]; then
     fi
 fi
 
-# --- Firewall ---
-if [ -f "${STAGING}/config/nftables.conf" ]; then
-    if ! diff -q "${STAGING}/config/nftables.conf" "/etc/nftables.conf" >/dev/null 2>&1; then
-        echo "  Updating nftables.conf..."
-        cp "${STAGING}/config/nftables.conf" "/etc/nftables.conf"
-        NEED_NFTABLES_RELOAD=1
-    fi
-fi
-
 # --- Sysctl hardening ---
 if [ -f "${STAGING}/config/sysctl-hardening.conf" ]; then
     if ! diff -q "${STAGING}/config/sysctl-hardening.conf" "/etc/sysctl.d/99-harbouros.conf" >/dev/null 2>&1; then
@@ -91,11 +81,6 @@ fi
 if [ "${NEED_DAEMON_RELOAD}" -eq 1 ]; then
     echo "  Reloading systemd daemon..."
     systemctl daemon-reload
-fi
-
-if [ "${NEED_NFTABLES_RELOAD}" -eq 1 ]; then
-    echo "  Reloading firewall rules..."
-    systemctl restart nftables.service
 fi
 
 if [ "${NEED_SYSCTL_RELOAD}" -eq 1 ]; then
