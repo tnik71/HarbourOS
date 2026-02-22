@@ -731,15 +731,19 @@ async function checkHarbourOSUpdate() {
 
 async function triggerHarbourOSUpdate() {
     var btn = document.getElementById('btn-harbouros-update');
+    var logEl = document.getElementById('harbouros-update-logs');
     var msg = document.getElementById('harbouros-update-msg');
     btn.disabled = true;
     btn.textContent = 'Updating...';
-    showMessage(msg, 'Checking and applying HarbourOS update... This may take a minute.', 'info');
+    logEl.style.display = 'block';
+    logEl.textContent = 'Checking for updates from GitHub...\n';
+    showMessage(msg, 'Update in progress \u2014 this may take a minute...', 'info');
     var res = await api('/api/harbouros/update', 'POST');
     btn.disabled = false;
     btn.textContent = 'Install Update';
     if (res) {
         showMessage(msg, res.success ? 'Update applied successfully!' : ('Update failed: ' + (res.message || '')), res.success ? 'success' : 'error');
+        await loadHarbourOSLog();
         if (res.success) setTimeout(function() { checkHarbourOSUpdate(); }, 3000);
     }
 }
