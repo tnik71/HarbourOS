@@ -47,6 +47,8 @@ cp "${SCRIPT_DIR}/admin-ui/requirements.txt" "${PI_GEN_DIR}/stage-harbouros/02-a
 echo "Copying config files..."
 cp "${SCRIPT_DIR}/config/harbouros.service" "${PI_GEN_DIR}/stage-harbouros/02-admin-ui/files/"
 cp "${SCRIPT_DIR}/config/sysctl-hardening.conf" "${PI_GEN_DIR}/stage-harbouros/05-security/files/"
+cp "${SCRIPT_DIR}/config/fail2ban-sshd.conf" "${PI_GEN_DIR}/stage-harbouros/05-security/files/"
+cp "${SCRIPT_DIR}/config/logrotate-plex.conf" "${PI_GEN_DIR}/stage-harbouros/05-security/files/"
 cp "${SCRIPT_DIR}/config/avahi/harbouros.service" "${PI_GEN_DIR}/stage-harbouros/04-networking/files/"
 cp "${SCRIPT_DIR}/config/harbouros-firstboot.service" "${PI_GEN_DIR}/stage-harbouros/06-boot-config/files/"
 cp "${SCRIPT_DIR}/config/harbouros-plex-update.sh" "${PI_GEN_DIR}/stage-harbouros/01-plex-server/files/"

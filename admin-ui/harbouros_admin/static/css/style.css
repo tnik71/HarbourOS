@@ -37,6 +37,38 @@ body {
 }
 
 /* === TOP BAR === */
+/* Password warning banner */
+.password-warning-banner {
+    position: fixed;
+    top: var(--topbar-height);
+    left: 0;
+    right: 0;
+    background: rgba(251, 191, 36, 0.15);
+    border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+    color: var(--warning);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 199;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+.password-warning-banner a {
+    color: #fbbf24;
+    font-weight: 600;
+    text-decoration: underline;
+}
+.password-warning-banner button {
+    background: none;
+    border: none;
+    color: var(--warning);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+
 .topbar {
     position: fixed;
     top: 0;

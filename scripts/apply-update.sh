@@ -14,6 +14,37 @@ NEED_RESTART=0
 NEED_DAEMON_RELOAD=0
 NEED_SYSCTL_RELOAD=0
 
+# --- One-time migrations (v1.0.2: install fail2ban, logrotate, SSH hardening) ---
+MIGRATION_FLAG="/etc/harbouros/.migration-1.0.2"
+if [ ! -f "${MIGRATION_FLAG}" ]; then
+    echo "  Running v1.0.2 migration..."
+
+    # Install fail2ban and logrotate if missing
+    for pkg in fail2ban logrotate; do
+        if ! dpkg -l "$pkg" >/dev/null 2>&1; then
+            echo "  Installing ${pkg}..."
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$pkg"
+        fi
+    done
+
+    # SSH X11Forwarding hardening
+    if grep -q "^X11Forwarding yes" /etc/ssh/sshd_config 2>/dev/null; then
+        sed -i 's/^X11Forwarding yes/X11Forwarding no/' /etc/ssh/sshd_config
+        echo "  Disabled SSH X11Forwarding"
+    elif grep -q "^#X11Forwarding" /etc/ssh/sshd_config 2>/dev/null; then
+        sed -i 's/^#X11Forwarding.*/X11Forwarding no/' /etc/ssh/sshd_config
+        echo "  Disabled SSH X11Forwarding"
+    fi
+
+    # Enable fail2ban
+    systemctl enable fail2ban.service 2>/dev/null || true
+    systemctl start fail2ban.service 2>/dev/null || true
+
+    mkdir -p "$(dirname "${MIGRATION_FLAG}")"
+    touch "${MIGRATION_FLAG}"
+    echo "  v1.0.2 migration complete."
+fi
+
 # --- Admin UI code ---
 if [ -d "${STAGING}/harbouros_admin" ]; then
     echo "  Updating admin UI code..."
@@ -66,6 +97,24 @@ if [ -f "${STAGING}/config/sysctl-hardening.conf" ]; then
         echo "  Updating sysctl hardening..."
         cp "${STAGING}/config/sysctl-hardening.conf" "/etc/sysctl.d/99-harbouros.conf"
         NEED_SYSCTL_RELOAD=1
+    fi
+fi
+
+# --- fail2ban config ---
+if [ -f "${STAGING}/config/fail2ban-sshd.conf" ]; then
+    mkdir -p /etc/fail2ban/jail.d
+    if ! diff -q "${STAGING}/config/fail2ban-sshd.conf" "/etc/fail2ban/jail.d/sshd.conf" >/dev/null 2>&1; then
+        echo "  Updating fail2ban SSH jail config..."
+        cp "${STAGING}/config/fail2ban-sshd.conf" "/etc/fail2ban/jail.d/sshd.conf"
+        systemctl restart fail2ban.service 2>/dev/null || true
+    fi
+fi
+
+# --- Plex logrotate config ---
+if [ -f "${STAGING}/config/logrotate-plex.conf" ]; then
+    if ! diff -q "${STAGING}/config/logrotate-plex.conf" "/etc/logrotate.d/plex" >/dev/null 2>&1; then
+        echo "  Updating Plex logrotate config..."
+        cp "${STAGING}/config/logrotate-plex.conf" "/etc/logrotate.d/plex"
     fi
 fi
 

@@ -381,6 +381,8 @@ def create_app():
     def api_setup_complete():
         if os.path.exists(SETUP_FLAG):
             return jsonify({"error": "Setup already completed"}), 400
+        if not auth_service.is_password_changed():
+            return jsonify({"error": "You must change the default password before completing setup"}), 400
         try:
             os.makedirs(os.path.dirname(SETUP_FLAG), exist_ok=True)
             with open(SETUP_FLAG, "w") as f:
