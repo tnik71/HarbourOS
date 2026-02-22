@@ -669,12 +669,30 @@ def test_api_network_dhcp(client):
 
 # --- API: Setup ---
 
-def test_api_setup_complete(client, clean_setup_flag):
-    """Setup complete API succeeds when flag does not exist."""
+def test_api_setup_complete_requires_password_change(client, clean_setup_flag):
+    """Setup complete API rejects when default password not changed."""
     import tempfile
     flag = os.path.join(tempfile.gettempdir(), "harbouros-setup-complete")
     if os.path.exists(flag):
         os.remove(flag)
+    resp = client.post("/api/setup/complete")
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert "password" in data["error"].lower()
+
+
+def test_api_setup_complete(client, clean_setup_flag):
+    """Setup complete API succeeds after password is changed."""
+    import tempfile
+    flag = os.path.join(tempfile.gettempdir(), "harbouros-setup-complete")
+    if os.path.exists(flag):
+        os.remove(flag)
+    # Change password first (required before setup can complete)
+    client.post(
+        "/api/system/password",
+        data=json.dumps({"current": "harbouros", "new": "newpass123"}),
+        content_type="application/json",
+    )
     resp = client.post("/api/setup/complete")
     assert resp.status_code == 200
     data = resp.get_json()

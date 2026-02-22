@@ -53,7 +53,9 @@ apt-get install -y -qq ${APT_OPTS} \
     python3 \
     python3-venv \
     python3-pip \
-    curl
+    curl \
+    fail2ban \
+    logrotate
 
 # =============================================
 # Stage 1: Install Plex Media Server
@@ -207,6 +209,16 @@ sysctl --system >/dev/null 2>&1
 # SSH hardening
 sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#X11Forwarding.*/X11Forwarding no/' /etc/ssh/sshd_config
+sed -i 's/^X11Forwarding yes/X11Forwarding no/' /etc/ssh/sshd_config
+
+# fail2ban for SSH brute-force protection
+mkdir -p /etc/fail2ban/jail.d
+cp "${STAGING}/config/fail2ban-sshd.conf" /etc/fail2ban/jail.d/sshd.conf
+systemctl enable fail2ban.service
+
+# Plex log rotation
+cp "${STAGING}/config/logrotate-plex.conf" /etc/logrotate.d/plex
 
 # Disable unused services
 systemctl disable bluetooth.service 2>/dev/null || true

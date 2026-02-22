@@ -18,7 +18,7 @@ fi
 # =============================================
 # 1. Stop and remove HarbourOS services
 # =============================================
-echo "[1/7] Stopping HarbourOS services..."
+echo "[1/8] Stopping HarbourOS services..."
 
 for unit in harbouros.service harbouros-firstboot.service harbouros-plex-update.timer harbouros-plex-update.service; do
     if systemctl is-enabled "$unit" 2>/dev/null | grep -q "enabled"; then
@@ -66,7 +66,7 @@ systemctl daemon-reload
 # 2. Remove HarbourOS application files
 # =============================================
 echo ""
-echo "[2/7] Removing HarbourOS application files..."
+echo "[2/8] Removing HarbourOS application files..."
 
 rm -rf /opt/harbouros
 echo "  Removed /opt/harbouros/"
@@ -78,7 +78,7 @@ echo "  Removed Plex update script"
 # 3. Remove HarbourOS config (but NOT user data like NAS content)
 # =============================================
 echo ""
-echo "[3/7] Removing HarbourOS configuration..."
+echo "[3/8] Removing HarbourOS configuration..."
 
 rm -rf /etc/harbouros
 echo "  Removed /etc/harbouros/"
@@ -91,7 +91,7 @@ echo "  Removed avahi HarbourOS service"
 # 4. Restore sysctl settings
 # =============================================
 echo ""
-echo "[4/6] Restoring sysctl settings..."
+echo "[4/8] Restoring sysctl settings..."
 
 if [ -f /etc/sysctl.d/99-harbouros.conf ]; then
     rm -f /etc/sysctl.d/99-harbouros.conf
@@ -102,10 +102,37 @@ else
 fi
 
 # =============================================
-# 5. Restore hostname and SSH settings
+# 5. Remove fail2ban config
 # =============================================
 echo ""
-echo "[5/6] Restoring system settings..."
+echo "[5/8] Removing fail2ban config..."
+
+if [ -f /etc/fail2ban/jail.d/sshd.conf ]; then
+    rm -f /etc/fail2ban/jail.d/sshd.conf
+    systemctl restart fail2ban.service 2>/dev/null || true
+    echo "  Removed HarbourOS fail2ban SSH jail"
+else
+    echo "  No HarbourOS fail2ban config found, skipping"
+fi
+
+# =============================================
+# 6. Remove Plex logrotate config
+# =============================================
+echo ""
+echo "[6/8] Removing Plex logrotate config..."
+
+if [ -f /etc/logrotate.d/plex ]; then
+    rm -f /etc/logrotate.d/plex
+    echo "  Removed Plex logrotate config"
+else
+    echo "  No Plex logrotate config found, skipping"
+fi
+
+# =============================================
+# 7. Restore hostname and SSH settings
+# =============================================
+echo ""
+echo "[7/8] Restoring system settings..."
 
 # Restore hostname if it was changed to harbouros
 CURRENT_HOSTNAME=$(hostname)
@@ -131,6 +158,12 @@ if grep -q "^PermitRootLogin no" /etc/ssh/sshd_config; then
     echo "  SSH root login restored to default"
 fi
 
+# Restore SSH X11Forwarding
+if grep -q "^X11Forwarding no" /etc/ssh/sshd_config; then
+    sed -i 's/^X11Forwarding no/#X11Forwarding yes/' /etc/ssh/sshd_config
+    echo "  SSH X11Forwarding restored to default"
+fi
+
 # Re-enable services that HarbourOS disabled
 for svc in bluetooth.service triggerhappy.service apt-daily-upgrade.timer apt-daily.timer; do
     if systemctl list-unit-files "$svc" >/dev/null 2>&1; then
@@ -140,10 +173,10 @@ for svc in bluetooth.service triggerhappy.service apt-daily-upgrade.timer apt-da
 done
 
 # =============================================
-# 6. Restore boot config
+# 8. Restore boot config
 # =============================================
 echo ""
-echo "[6/6] Restoring boot configuration..."
+echo "[8/8] Restoring boot configuration..."
 
 # Remove HarbourOS boot tweaks from config.txt
 if [ -f /boot/firmware/config.txt ]; then

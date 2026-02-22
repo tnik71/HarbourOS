@@ -74,6 +74,7 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="setupTestConnection()">Test Connection</button>
                     <button type="submit" class="btn btn-primary">Add Mount & Continue</button>
+                    <button type="button" class="btn btn-secondary" onclick="showStep(2)" style="margin-left:auto">Skip</button>
                 </div>
                 <div id="setup-test-result" class="message" style="display:none"></div>
             </form>
@@ -183,7 +184,12 @@
     });
 
     async function completeSetup() {
-        await api('/api/setup/complete', 'POST');
+        var res = await api('/api/setup/complete', 'POST');
+        if (res && res.error) {
+            alert(res.error);
+            showStep(0);
+            return;
+        }
         showStep(3);
     }
     </script>

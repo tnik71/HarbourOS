@@ -16,6 +16,7 @@ MONITORED_SERVICES = [
     "harbouros",
     "avahi-daemon",
     "sshd",
+    "fail2ban",
 ]
 
 

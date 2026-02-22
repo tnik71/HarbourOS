@@ -30,6 +30,12 @@
     </div>
 </div>
 
+<!-- PASSWORD WARNING BANNER -->
+<div class="password-warning-banner" id="password-warning" style="display:none">
+    <span>You are using the default password. <a href="#" onclick="openApp('system');setTimeout(function(){showSystemTab('password',document.querySelector('[onclick*=password]'))},100);return false;">Change it now</a> to secure your server.</span>
+    <button onclick="this.parentElement.style.display='none'" title="Dismiss">&times;</button>
+</div>
+
 <!-- DESKTOP -->
 <div class="desktop">
     <div class="desktop-logo">
@@ -359,6 +365,7 @@
                             <option value="harbouros">HarbourOS Admin</option>
                             <option value="avahi-daemon">Avahi (mDNS)</option>
                             <option value="sshd">SSH</option>
+                            <option value="fail2ban">fail2ban</option>
                         </select>
                     </div>
                     <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">

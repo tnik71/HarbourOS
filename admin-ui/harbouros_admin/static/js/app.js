@@ -209,6 +209,14 @@ async function updateWidgets() {
 if (window.location.pathname !== '/login') {
     updateWidgets();
     setInterval(updateWidgets, 30000);
+    // Check if default password is still in use
+    (async function() {
+        var status = await api('/api/auth/status');
+        if (status && !status.password_changed) {
+            var banner = document.getElementById('password-warning');
+            if (banner) banner.style.display = 'flex';
+        }
+    })();
     // Also do a fast widget-only refresh every 8s (skip update check)
     setInterval(async function() {
         var sys = await api('/api/system/status');
