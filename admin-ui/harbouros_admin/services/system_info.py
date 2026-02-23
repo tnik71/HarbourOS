@@ -11,6 +11,22 @@ PLEX_UPDATE_LOG = "/var/log/harbouros-plex-update.log"
 HARBOUROS_UPDATE_STATUS = "/var/lib/harbouros/update-status.json"
 HARBOUROS_UPDATE_LOG = "/var/log/harbouros-self-update.log"
 
+_VERSION_PATHS = [
+    "/opt/harbouros/repo/VERSION",
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "VERSION"),
+]
+
+
+def _get_version_from_file():
+    """Read the version from the VERSION file (works in prod and dev)."""
+    for path in _VERSION_PATHS:
+        try:
+            with open(path) as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            continue
+    return "unknown"
+
 MONITORED_SERVICES = [
     "plexmediaserver",
     "harbouros",
@@ -265,7 +281,7 @@ def get_harbouros_update_status():
     if os.environ.get("HARBOUROS_DEV"):
         return {
             "update_available": False,
-            "current_version": "1.0.0",
+            "current_version": _get_version_from_file(),
             "current_sha": "abc1234",
             "last_check": "2025-06-15T01:00:00+00:00",
         }
@@ -275,7 +291,7 @@ def get_harbouros_update_status():
     except (FileNotFoundError, json.JSONDecodeError):
         return {
             "update_available": False,
-            "current_version": "unknown",
+            "current_version": _get_version_from_file(),
             "current_sha": "unknown",
             "last_check": None,
         }

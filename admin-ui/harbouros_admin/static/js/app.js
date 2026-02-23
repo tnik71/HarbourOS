@@ -217,6 +217,14 @@ if (window.location.pathname !== '/login') {
             if (banner) banner.style.display = 'flex';
         }
     })();
+    // Fetch version for dock display
+    (async function() {
+        var res = await api('/api/harbouros/update/status');
+        if (res && res.current_version) {
+            var el = document.getElementById('dock-version');
+            if (el) el.textContent = 'v' + res.current_version;
+        }
+    })();
     // Also do a fast widget-only refresh every 8s (skip update check)
     setInterval(async function() {
         var sys = await api('/api/system/status');
