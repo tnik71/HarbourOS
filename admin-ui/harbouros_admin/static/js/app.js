@@ -57,6 +57,7 @@ function openApp(name) {
         if (name === 'nas') loadNasModal();
         if (name === 'network') loadNetworkModal();
         if (name === 'system') loadSystemModal();
+        if (name === 'episodes') loadEpisodesModal();
     }
 }
 
@@ -856,4 +857,239 @@ async function changePassword(e) {
             document.getElementById('pw-confirm').value = '';
         }
     }
+}
+
+/* === Episode Manager === */
+var _episodeShows = [];
+
+async function loadEpisodesModal() {
+    // Load DB info
+    var info = await api('/api/episodes/db-info');
+    var infoEl = document.getElementById('episodes-db-info');
+    if (info && infoEl) {
+        if (info.available) {
+            infoEl.innerHTML = '<span class="text-muted text-sm">DB v' + esc(info.version) + ' - ' +
+                info.show_count.toLocaleString() + ' shows</span>';
+        } else {
+            infoEl.innerHTML = '<span class="text-muted text-sm">No database loaded</span>';
+        }
+    }
+
+    // Load existing scan results
+    var shows = await api('/api/episodes/shows');
+    if (shows && shows.scanned) {
+        _episodeShows = shows.shows;
+        renderEpisodeShows(_episodeShows);
+    }
+
+    // Reset to grid view
+    showEpisodesGrid();
+}
+
+async function updateEpisodeDb() {
+    var msg = document.getElementById('episodes-action-msg');
+    showMessage(msg, 'Downloading episode database from harbouros.eu...', 'info');
+    var res = await api('/api/episodes/update-db', 'POST');
+    if (res) {
+        showMessage(msg, res.message, res.success ? 'success' : 'error');
+        if (res.success) loadEpisodesModal();
+    }
+}
+
+async function scanPlexEpisodes() {
+    var msg = document.getElementById('episodes-action-msg');
+    showMessage(msg, 'Scanning Plex library and matching episodes...', 'info');
+    var res = await api('/api/episodes/scan', 'POST');
+    if (res) {
+        showMessage(msg, res.message, res.success ? 'success' : 'error');
+        if (res.success) {
+            var shows = await api('/api/episodes/shows');
+            if (shows && shows.scanned) {
+                _episodeShows = shows.shows;
+                renderEpisodeShows(_episodeShows);
+            }
+        }
+    }
+}
+
+function renderEpisodeShows(shows) {
+    var el = document.getElementById('episodes-shows-list');
+    var searchBar = document.getElementById('episodes-search-bar');
+    if (!el) return;
+
+    if (!shows || shows.length === 0) {
+        el.innerHTML = '<p class="text-muted text-sm">No shows found. Scan your Plex library first.</p>';
+        if (searchBar) searchBar.style.display = 'none';
+        return;
+    }
+
+    if (searchBar) searchBar.style.display = 'block';
+
+    el.innerHTML = '<div class="episodes-grid">' + shows.map(function(show) {
+        if (!show.matched) {
+            return '<div class="episode-card episode-card-unmatched">' +
+                '<div class="episode-card-title">' + esc(show.plex_title) + '</div>' +
+                '<div class="episode-card-meta">Not in database</div>' +
+                '</div>';
+        }
+
+        var pctClass = '';
+        if (show.completion_pct === 100) pctClass = 'complete';
+        else if (show.completion_pct >= 75) pctClass = 'high';
+        else if (show.completion_pct >= 50) pctClass = 'mid';
+        else pctClass = 'low';
+
+        return '<div class="episode-card" onclick="showMissingEpisodes(\'' + esc(show.rating_key) + '\')">' +
+            '<div class="episode-card-title">' + esc(show.db_title || show.plex_title) + '</div>' +
+            '<div class="episode-progress">' +
+            '<div class="episode-progress-bar"><div class="episode-progress-fill episode-progress-' + pctClass + '" style="width:' + show.completion_pct + '%"></div></div>' +
+            '<span class="episode-progress-pct">' + show.completion_pct + '%</span>' +
+            '</div>' +
+            '<div class="episode-card-stats">' + show.local_episodes + '/' + show.total_episodes + ' episodes</div>' +
+            '<div class="episode-card-meta">' +
+            esc(show.status || '') +
+            (show.missing_count > 0 ? ' - ' + show.missing_count + ' missing' : '') +
+            '</div>' +
+            '</div>';
+    }).join('') + '</div>';
+}
+
+function filterEpisodeShows() {
+    var search = (document.getElementById('episodes-search').value || '').toLowerCase();
+    var sort = document.getElementById('episodes-sort').value;
+    var filter = document.getElementById('episodes-filter').value;
+
+    var filtered = _episodeShows.filter(function(s) {
+        // Text search
+        var title = (s.db_title || s.plex_title || '').toLowerCase();
+        if (search && title.indexOf(search) === -1) return false;
+
+        // Category filter
+        if (filter === 'incomplete') return s.matched && s.completion_pct < 100;
+        if (filter === 'complete') return s.matched && s.completion_pct === 100;
+        if (filter === 'unmatched') return !s.matched;
+        return true;
+    });
+
+    // Sort
+    filtered.sort(function(a, b) {
+        if (sort === 'name') return (a.db_title || a.plex_title).localeCompare(b.db_title || b.plex_title);
+        if (sort === 'missing') return (b.missing_count || 0) - (a.missing_count || 0);
+        // Default: completion (lowest first, unmatched last)
+        if (!a.matched && b.matched) return 1;
+        if (a.matched && !b.matched) return -1;
+        if (a.completion_pct === 100 && b.completion_pct < 100) return 1;
+        if (a.completion_pct < 100 && b.completion_pct === 100) return -1;
+        return a.completion_pct - b.completion_pct;
+    });
+
+    renderEpisodeShows(filtered);
+}
+
+async function showMissingEpisodes(ratingKey) {
+    var gridView = document.getElementById('episodes-grid-view');
+    var detailView = document.getElementById('episodes-detail-view');
+    var backBtn = document.getElementById('episodes-back-btn');
+    var titleEl = document.getElementById('episodes-modal-title');
+    var contentEl = document.getElementById('episodes-detail-content');
+
+    if (!contentEl) return;
+
+    gridView.style.display = 'none';
+    detailView.style.display = 'block';
+    backBtn.style.display = 'inline-flex';
+
+    contentEl.innerHTML = '<span class="spinner"></span>Loading...';
+
+    var res = await api('/api/episodes/shows/' + encodeURIComponent(ratingKey) + '/missing');
+    if (!res) {
+        contentEl.innerHTML = '<p class="text-muted">Could not load episode details.</p>';
+        return;
+    }
+
+    if (titleEl) titleEl.textContent = res.db_title || res.plex_title;
+
+    var html = '<div class="episode-detail-header">' +
+        '<div class="episode-detail-title">' + esc(res.db_title || res.plex_title) + '</div>' +
+        '<div class="episode-detail-stats">' +
+        res.local_episodes + '/' + res.total_episodes + ' episodes - ' +
+        res.missing_count + ' missing (' + res.completion_pct + '%)' +
+        '</div>' +
+        (res.status ? '<div class="episode-detail-status">' + esc(res.status) + '</div>' : '') +
+        '</div>';
+
+    if (res.seasons && res.seasons.length > 0) {
+        html += '<div class="episode-seasons">';
+        res.seasons.forEach(function(season) {
+            var isComplete = season.missing.length === 0 && season.not_aired === 0;
+            var allUnaired = season.total_aired === 0 && season.not_aired > 0;
+
+            html += '<div class="episode-season' + (allUnaired ? ' season-unaired' : '') + '">' +
+                '<div class="episode-season-header" onclick="this.parentElement.classList.toggle(\'open\')">' +
+                '<span class="episode-season-toggle">&#9654;</span>' +
+                '<span class="episode-season-name">Season ' + season.number + '</span>' +
+                '<span class="episode-season-count">(' + season.local + '/' + season.total_aired + ')</span>';
+
+            if (isComplete && season.total_aired > 0) {
+                html += '<span class="episode-season-badge complete">Complete</span>';
+            } else if (allUnaired) {
+                html += '<span class="episode-season-badge unaired">Not yet aired</span>';
+            } else if (season.missing.length > 0) {
+                html += '<span class="episode-season-badge missing">' + season.missing.length + ' missing</span>';
+            }
+
+            html += '</div>';
+
+            // Expandable content
+            if (season.missing.length > 0) {
+                html += '<div class="episode-season-episodes">';
+                season.missing.forEach(function(ep) {
+                    var dateStr = ep.air_date ? formatEpisodeDate(ep.air_date) : '';
+                    html += '<div class="episode-missing-item">' +
+                        '<span class="episode-ep-number">E' + String(ep.episode).padStart(2, '0') + '</span>' +
+                        '<span class="episode-ep-name">' + esc(ep.name) + '</span>' +
+                        (dateStr ? '<span class="episode-ep-date">' + dateStr + '</span>' : '') +
+                        '</div>';
+                });
+                html += '</div>';
+            } else if (isComplete && season.total_aired > 0) {
+                html += '<div class="episode-season-episodes"><div class="text-muted text-sm" style="padding:0.4rem 0">All episodes collected</div></div>';
+            } else if (allUnaired) {
+                html += '<div class="episode-season-episodes"><div class="text-muted text-sm" style="padding:0.4rem 0">' + season.not_aired + ' episodes not yet aired</div></div>';
+            }
+
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    contentEl.innerHTML = html;
+
+    // Auto-open seasons that have missing episodes
+    document.querySelectorAll('.episode-season').forEach(function(el) {
+        var badge = el.querySelector('.episode-season-badge.missing');
+        if (badge) el.classList.add('open');
+    });
+}
+
+function showEpisodesGrid() {
+    var gridView = document.getElementById('episodes-grid-view');
+    var detailView = document.getElementById('episodes-detail-view');
+    var backBtn = document.getElementById('episodes-back-btn');
+    var titleEl = document.getElementById('episodes-modal-title');
+
+    gridView.style.display = 'block';
+    detailView.style.display = 'none';
+    backBtn.style.display = 'none';
+    if (titleEl) titleEl.textContent = 'Episode Manager';
+}
+
+function formatEpisodeDate(dateStr) {
+    if (!dateStr) return '';
+    var parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    return months[m - 1] + ' ' + d + ', ' + parts[0];
 }

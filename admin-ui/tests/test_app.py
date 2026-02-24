@@ -705,3 +705,120 @@ def test_api_setup_complete_replay(client):
     assert resp.status_code == 400
     data = resp.get_json()
     assert "already" in data["error"].lower()
+
+
+# --- API: Episodes ---
+
+def test_api_episodes_db_info_empty(client):
+    """Episodes DB info returns not available when no DB loaded."""
+    from harbouros_admin.services import episodes_service
+    episodes_service._episode_db = None
+    # Remove local DB file if it exists
+    import os
+    if os.path.exists(episodes_service.LOCAL_DB_PATH):
+        os.remove(episodes_service.LOCAL_DB_PATH)
+    resp = client.get("/api/episodes/db-info")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "available" in data
+
+
+def test_api_episodes_update_db(client):
+    """Episodes update-db works in dev mode."""
+    resp = client.post("/api/episodes/update-db")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["success"] is True
+    assert "updated" in data["message"].lower()
+
+
+def test_api_episodes_db_info_after_update(client):
+    """Episodes DB info returns data after update."""
+    client.post("/api/episodes/update-db")
+    resp = client.get("/api/episodes/db-info")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["available"] is True
+    assert data["show_count"] > 0
+    assert data["version"] is not None
+
+
+def test_api_episodes_scan(client):
+    """Episodes scan works in dev mode."""
+    client.post("/api/episodes/update-db")
+    resp = client.post("/api/episodes/scan")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["success"] is True
+    assert "scanned" in data["message"].lower()
+
+
+def test_api_episodes_scan_no_db(client):
+    """Episodes scan fails without DB."""
+    from harbouros_admin.services import episodes_service
+    episodes_service._episode_db = None
+    import os
+    if os.path.exists(episodes_service.LOCAL_DB_PATH):
+        os.remove(episodes_service.LOCAL_DB_PATH)
+    resp = client.post("/api/episodes/scan")
+    assert resp.status_code == 500
+    data = resp.get_json()
+    assert data["success"] is False
+
+
+def test_api_episodes_shows(client):
+    """Episodes shows returns scan results."""
+    client.post("/api/episodes/update-db")
+    client.post("/api/episodes/scan")
+    resp = client.get("/api/episodes/shows")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["scanned"] is True
+    assert isinstance(data["shows"], list)
+    assert len(data["shows"]) >= 1
+    show = data["shows"][0]
+    assert "plex_title" in show
+    assert "matched" in show
+    assert "completion_pct" in show
+
+
+def test_api_episodes_shows_have_matched(client):
+    """Episodes scan matches known shows."""
+    client.post("/api/episodes/update-db")
+    client.post("/api/episodes/scan")
+    resp = client.get("/api/episodes/shows")
+    data = resp.get_json()
+    matched = [s for s in data["shows"] if s["matched"]]
+    assert len(matched) >= 3
+
+
+def test_api_episodes_missing(client):
+    """Episodes missing endpoint returns season details."""
+    client.post("/api/episodes/update-db")
+    client.post("/api/episodes/scan")
+    # Get shows to find a rating key
+    resp = client.get("/api/episodes/shows")
+    shows = resp.get_json()["shows"]
+    matched_show = next(s for s in shows if s["matched"] and s["missing_count"] > 0)
+    resp = client.get(f"/api/episodes/shows/{matched_show['rating_key']}/missing")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "seasons" in data
+    assert data["matched"] is True
+    assert len(data["seasons"]) >= 1
+
+
+def test_api_episodes_missing_not_found(client):
+    """Episodes missing with bad key returns 404."""
+    resp = client.get("/api/episodes/shows/nonexistent/missing")
+    assert resp.status_code == 404
+
+
+def test_api_episodes_auth_required(anon_client):
+    """Episodes endpoints require authentication."""
+    resp = anon_client.get("/api/episodes/db-info")
+    assert resp.status_code == 401
+    resp = anon_client.post("/api/episodes/scan")
+    assert resp.status_code == 401
+    resp = anon_client.get("/api/episodes/shows")
+    assert resp.status_code == 401
