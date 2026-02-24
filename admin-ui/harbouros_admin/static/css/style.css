@@ -842,6 +842,250 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     .mount-header { flex-direction: column; align-items: flex-start; }
 }
 
+/* === EPISODE MANAGER === */
+.app-icon-img.episodes { background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.2); }
+.app-icon-img.episodes svg { color: #c084fc; }
+
+.episodes-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.episodes-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.episodes-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.episodes-toolbar-left {
+    display: flex;
+    gap: 0.4rem;
+}
+.episodes-db-info {
+    display: flex;
+    align-items: center;
+}
+
+.episodes-search {
+    margin-bottom: 0.75rem;
+}
+.episodes-search input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 0.45rem 0.7rem;
+    font-size: 0.85rem;
+}
+.episodes-search input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.episodes-search input::placeholder { color: var(--text-dim); }
+.episodes-filter-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+.episodes-filter-row select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* Episode Card Grid */
+.episodes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+.episode-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 0.75rem 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.episode-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(168, 85, 247, 0.3);
+}
+.episode-card-unmatched {
+    opacity: 0.5;
+    cursor: default;
+}
+.episode-card-unmatched:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+.episode-card-title {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.episode-card-stats {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+}
+.episode-card-meta {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    margin-top: 0.15rem;
+}
+
+/* Progress bar */
+.episode-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.episode-progress-bar {
+    flex: 1;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.episode-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+.episode-progress-complete { background: #22c55e; }
+.episode-progress-high { background: #2563eb; }
+.episode-progress-mid { background: #f59e0b; }
+.episode-progress-low { background: #ef4444; }
+.episode-progress-pct {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 32px;
+    text-align: right;
+}
+
+/* Detail View */
+.episode-detail-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.episode-detail-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.episode-detail-stats {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.episode-detail-status {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 0.15rem;
+}
+
+/* Season Accordion */
+.episode-seasons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.episode-season {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.episode-season-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.episode-season-header:hover { background: rgba(255, 255, 255, 0.04); }
+.episode-season-toggle {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+    display: inline-block;
+}
+.episode-season.open .episode-season-toggle { transform: rotate(90deg); }
+.episode-season-name {
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+.episode-season-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.episode-season-badge {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+}
+.episode-season-badge.complete { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+.episode-season-badge.missing { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.episode-season-badge.unaired { background: rgba(107, 114, 128, 0.12); color: #6b7280; }
+
+.episode-season-episodes {
+    display: none;
+    padding: 0 0.75rem 0.5rem;
+}
+.episode-season.open .episode-season-episodes { display: block; }
+
+.season-unaired { opacity: 0.5; }
+
+.episode-missing-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    font-size: 0.78rem;
+}
+.episode-missing-item:last-child { border-bottom: none; }
+.episode-ep-number {
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 30px;
+}
+.episode-ep-name {
+    flex: 1;
+    color: var(--text);
+}
+.episode-ep-date {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+
+@media (max-width: 600px) {
+    .episodes-grid { grid-template-columns: 1fr; }
+    .episodes-toolbar { flex-direction: column; align-items: stretch; }
+    .episodes-toolbar-left { justify-content: center; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

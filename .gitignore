@@ -38,3 +38,10 @@ Thumbs.db
 
 # Build output
 images/
+
+# Website (harbouros.eu) and standalone tools
+website/
+tools/
+
+# Runtime data (episode DB cache)
+admin-ui/harbouros_admin/data/

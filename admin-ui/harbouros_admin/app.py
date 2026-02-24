@@ -9,6 +9,7 @@ from flask import Flask, jsonify, redirect, render_template, request, session, u
 
 from .services import (
     auth_service,
+    episodes_service,
     mount_manager,
     network_manager,
     plex_service,
@@ -374,6 +375,40 @@ def create_app():
             return jsonify({"success": success, "message": message})
 
         return jsonify({"error": "No changes specified"}), 400
+
+    # --- API: Episodes ---
+
+    @app.route("/api/episodes/db-info")
+    @login_required
+    def api_episodes_db_info():
+        return jsonify(episodes_service.get_db_info())
+
+    @app.route("/api/episodes/update-db", methods=["POST"])
+    @login_required
+    def api_episodes_update_db():
+        success, message = episodes_service.update_episode_db()
+        status_code = 200 if success else 500
+        return jsonify({"success": success, "message": message}), status_code
+
+    @app.route("/api/episodes/scan", methods=["POST"])
+    @login_required
+    def api_episodes_scan():
+        success, message = episodes_service.scan_plex_library()
+        status_code = 200 if success else 500
+        return jsonify({"success": success, "message": message}), status_code
+
+    @app.route("/api/episodes/shows")
+    @login_required
+    def api_episodes_shows():
+        return jsonify(episodes_service.get_shows_status())
+
+    @app.route("/api/episodes/shows/<rating_key>/missing")
+    @login_required
+    def api_episodes_missing(rating_key):
+        result = episodes_service.get_missing_episodes(rating_key)
+        if result is None:
+            return jsonify({"error": "Show not found. Run a scan first."}), 404
+        return jsonify(result)
 
     # --- API: Setup ---
 
