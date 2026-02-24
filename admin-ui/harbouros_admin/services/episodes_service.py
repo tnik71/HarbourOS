@@ -64,7 +64,10 @@ def update_episode_db():
     try:
         req = urllib.request.Request(
             EPISODE_DB_URL,
-            headers={"Accept-Encoding": "gzip"},
+            headers={
+                "Accept-Encoding": "gzip",
+                "User-Agent": "HarbourOS/1.0",
+            },
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
             compressed = resp.read()
