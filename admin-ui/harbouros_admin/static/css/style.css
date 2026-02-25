@@ -432,6 +432,7 @@ body {
 .btn-danger { background: rgba(248, 113, 113, 0.15); color: var(--error); }
 .btn-danger:hover { background: rgba(248, 113, 113, 0.25); }
 .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.75rem; }
+.btn-disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 
 /* === STATUS & BADGES === */
 .status-badge {
@@ -912,6 +913,22 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     padding: 0.3rem 0.5rem;
     font-size: 0.75rem;
 }
+
+/* Episode Scan Summary */
+.episodes-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+}
+.episodes-summary-sep { opacity: 0.4; }
+.episodes-summary-ok { color: var(--success); }
+.episodes-summary-warn { color: var(--warning); }
 
 /* Episode Card Grid — Sonarr-inspired */
 .episodes-grid {
