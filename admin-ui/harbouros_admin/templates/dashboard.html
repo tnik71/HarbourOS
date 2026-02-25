@@ -444,7 +444,7 @@
 
 <!-- EPISODES MODAL -->
 <div class="modal-backdrop" id="modal-episodes">
-    <div class="modal">
+    <div class="modal modal-wide">
         <div class="modal-header">
             <div class="episodes-header-left">
                 <button class="btn btn-sm btn-secondary episodes-back-btn" id="episodes-back-btn" onclick="showEpisodesGrid()" style="display:none">
@@ -463,9 +463,7 @@
                         <button class="btn btn-primary btn-sm" onclick="scanPlexEpisodes()">Scan Plex Library</button>
                         <button class="btn btn-secondary btn-sm" onclick="updateEpisodeDb()">Update Database</button>
                     </div>
-                    <div class="episodes-db-info" id="episodes-db-info">
-                        <span class="text-muted text-sm">No database loaded</span>
-                    </div>
+                    <div class="episodes-db-info" id="episodes-db-info">No database loaded</div>
                 </div>
                 <div id="episodes-action-msg" class="message" style="display:none"></div>
                 <div class="episodes-search" id="episodes-search-bar" style="display:none">
