@@ -36,11 +36,18 @@ MONITORED_SERVICES = [
 ]
 
 
+def _sudo(cmd):
+    """Prepend sudo to a command when running as non-root."""
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        return ["sudo"] + cmd
+    return cmd
+
+
 def _run(cmd, timeout=30):
     """Run a command and return the CompletedProcess."""
     if os.environ.get("HARBOUROS_DEV"):
         return _mock_run(cmd)
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(_sudo(cmd), capture_output=True, text=True, timeout=timeout)
 
 
 def _mock_run(cmd):

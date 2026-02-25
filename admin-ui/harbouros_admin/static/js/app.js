@@ -365,9 +365,9 @@ async function loadNasModal() {
             ' <span class="text-muted text-sm">' + m.status + '</span>' +
             '</div><div class="mount-actions">' +
             (m.status === 'mounted'
-                ? '<button class="btn btn-sm btn-secondary" onclick="unmountShare(\'' + m.id + '\')">Unmount</button>'
-                : '<button class="btn btn-sm btn-primary" onclick="mountShare(\'' + m.id + '\')">Mount</button>') +
-            '<button class="btn btn-sm btn-danger" onclick="removeMount(\'' + m.id + '\')">Remove</button>' +
+                ? '<button class="btn btn-sm btn-secondary" onclick="unmountShare(\'' + esc(m.id) + '\')">Unmount</button>'
+                : '<button class="btn btn-sm btn-primary" onclick="mountShare(\'' + esc(m.id) + '\')">Mount</button>') +
+            '<button class="btn btn-sm btn-danger" onclick="removeMount(\'' + esc(m.id) + '\')">Remove</button>' +
             '</div></div>' +
             '<div class="text-muted text-sm" style="margin-top:0.3rem">' + esc(m.host) + ':' + esc(m.share) + ' \u2192 ' + esc(m.target) + '</div></div>';
     }).join('');

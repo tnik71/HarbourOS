@@ -1,0 +1,31 @@
+# HarbourOS — Targeted sudo access for the harbouros service user
+# Installed to /etc/sudoers.d/harbouros
+
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl enable *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl disable *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl daemon-reload
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl status *
+harbouros ALL=(root) NOPASSWD: /usr/bin/hostnamectl set-hostname *
+harbouros ALL=(root) NOPASSWD: /usr/sbin/chpasswd
+harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/dhcpcd.conf
+harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/systemd/system/*.mount
+harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/systemd/system/*.automount
+harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/systemd/system/*.mount
+harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/systemd/system/*.automount
+harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/harbouros/smb-*.creds
+harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/harbouros/smb-*.creds
+harbouros ALL=(root) NOPASSWD: /usr/bin/mkdir -p /media/nas/*
+harbouros ALL=(root) NOPASSWD: /usr/bin/rmdir /media/nas/*
+harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-plex-update.sh
+harbouros ALL=(root) NOPASSWD: /usr/bin/sysctl --system
+harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl *
+harbouros ALL=(root) NOPASSWD: /usr/sbin/shutdown *
+harbouros ALL=(root) NOPASSWD: /usr/sbin/reboot
+harbouros ALL=(root) NOPASSWD: /usr/bin/showmount *
+harbouros ALL=(root) NOPASSWD: /usr/bin/smbclient *
+harbouros ALL=(root) NOPASSWD: /usr/bin/avahi-browse *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemd-escape *

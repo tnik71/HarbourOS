@@ -6,6 +6,13 @@ import re
 import subprocess
 import uuid
 
+
+def _sudo(cmd):
+    """Prepend sudo to a command when running as non-root."""
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        return ["sudo"] + cmd
+    return cmd
+
 CONFIG_DIR = "/etc/harbouros"
 CONFIG_FILE = os.path.join(CONFIG_DIR, "mounts.json")
 MOUNT_BASE = "/media/nas"
@@ -52,11 +59,52 @@ def _mount_path(name):
     return os.path.join(MOUNT_BASE, _sanitize_name(name))
 
 
+def _validate_host(host):
+    """Validate host is a reasonable hostname or IP, not localhost."""
+    if not host or not isinstance(host, str):
+        raise ValueError("Host is required")
+    host = host.strip()
+    if not re.match(r'^[a-zA-Z0-9._-]+$', host):
+        raise ValueError("Host contains invalid characters")
+    if host in ('localhost', '127.0.0.1', '0.0.0.0', '::1'):
+        raise ValueError("Cannot mount localhost")
+    if len(host) > 253:
+        raise ValueError("Hostname too long")
+    return host
+
+
+def _validate_share(share):
+    """Validate share path — block path traversal."""
+    if not share or not isinstance(share, str):
+        raise ValueError("Share path is required")
+    if '..' in share:
+        raise ValueError("Share path cannot contain '..'")
+    return share
+
+
+_SAFE_MOUNT_OPTIONS = {
+    'nfsvers', 'vers', 'soft', 'hard', 'timeo', 'retrans', 'ro', 'rw',
+    'credentials', 'iocharset', 'file_mode', 'dir_mode', 'uid', 'gid',
+    'sec', 'noacl', 'nolock', 'intr',
+}
+
+
+def _validate_options(options):
+    """Validate mount options against a whitelist."""
+    if not options:
+        return None
+    for opt in options.split(','):
+        key = opt.split('=')[0].strip()
+        if key and key not in _SAFE_MOUNT_OPTIONS:
+            raise ValueError(f"Mount option '{key}' is not allowed")
+    return options
+
+
 def _systemd_escape(path):
     """Convert a path to a systemd unit name using systemd-escape."""
     try:
         result = subprocess.run(
-            ["systemd-escape", "--path", path],
+            _sudo(["systemd-escape", "--path", path]),
             capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
@@ -132,11 +180,33 @@ def _write_smb_credentials(mount):
     if mount["type"] != "smb":
         return
     creds_file = os.path.join(CONFIG_DIR, f"smb-{_sanitize_name(mount['name'])}.creds")
-    with open(creds_file, "w") as f:
-        f.write(f"username={mount.get('username', '')}\n")
-        f.write(f"password={mount.get('password', '')}\n")
-        f.write(f"domain={mount.get('domain', 'WORKGROUP')}\n")
-    os.chmod(creds_file, 0o600)
+    content = (
+        f"username={mount.get('username', '')}\n"
+        f"password={mount.get('password', '')}\n"
+        f"domain={mount.get('domain', 'WORKGROUP')}\n"
+    )
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        subprocess.run(
+            ["sudo", "tee", creds_file],
+            input=content, capture_output=True, text=True, timeout=5
+        )
+        subprocess.run(["sudo", "chmod", "600", creds_file], timeout=5)
+    else:
+        fd = os.open(creds_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+
+
+def _write_privileged_file(path, content):
+    """Write to a root-owned path, using sudo tee if non-root."""
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        subprocess.run(
+            ["sudo", "tee", path],
+            input=content, capture_output=True, text=True, timeout=5
+        )
+    else:
+        with open(path, "w") as f:
+            f.write(content)
 
 
 def _install_units(mount):
@@ -147,17 +217,25 @@ def _install_units(mount):
     mount_unit_path = os.path.join(SYSTEMD_DIR, f"{unit_name}.mount")
     automount_unit_path = os.path.join(SYSTEMD_DIR, f"{unit_name}.automount")
 
-    with open(mount_unit_path, "w") as f:
-        f.write(mount_content)
-    with open(automount_unit_path, "w") as f:
-        f.write(automount_content)
+    _write_privileged_file(mount_unit_path, mount_content)
+    _write_privileged_file(automount_unit_path, automount_content)
 
     if not os.environ.get("HARBOUROS_DEV"):
-        subprocess.run(["systemctl", "daemon-reload"], check=False, timeout=10)
+        subprocess.run(_sudo(["systemctl", "daemon-reload"]), check=False, timeout=10)
         subprocess.run(
-            ["systemctl", "enable", f"{unit_name}.automount"],
+            _sudo(["systemctl", "enable", f"{unit_name}.automount"]),
             check=False, timeout=10
         )
+
+
+def _remove_privileged_file(path):
+    """Remove a root-owned file, using sudo if non-root."""
+    if not os.path.exists(path):
+        return
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        subprocess.run(["sudo", "rm", path], check=False, timeout=5)
+    else:
+        os.remove(path)
 
 
 def _remove_units(mount):
@@ -167,26 +245,23 @@ def _remove_units(mount):
 
     if not os.environ.get("HARBOUROS_DEV"):
         subprocess.run(
-            ["systemctl", "disable", "--now", f"{unit_name}.automount"],
+            _sudo(["systemctl", "disable", "--now", f"{unit_name}.automount"]),
             check=False, timeout=10
         )
         subprocess.run(
-            ["systemctl", "disable", "--now", f"{unit_name}.mount"],
+            _sudo(["systemctl", "disable", "--now", f"{unit_name}.mount"]),
             check=False, timeout=10
         )
 
     for ext in (".mount", ".automount"):
-        path = os.path.join(SYSTEMD_DIR, f"{unit_name}{ext}")
-        if os.path.exists(path):
-            os.remove(path)
+        _remove_privileged_file(os.path.join(SYSTEMD_DIR, f"{unit_name}{ext}"))
 
     if not os.environ.get("HARBOUROS_DEV"):
-        subprocess.run(["systemctl", "daemon-reload"], check=False, timeout=10)
+        subprocess.run(_sudo(["systemctl", "daemon-reload"]), check=False, timeout=10)
 
     # Remove SMB credentials if applicable
     creds_file = os.path.join(CONFIG_DIR, f"smb-{_sanitize_name(mount['name'])}.creds")
-    if os.path.exists(creds_file):
-        os.remove(creds_file)
+    _remove_privileged_file(creds_file)
 
 
 def list_mounts():
@@ -210,6 +285,10 @@ def list_mounts():
 
 def add_mount(name, mount_type, host, share, **kwargs):
     """Add a new NAS mount."""
+    host = _validate_host(host)
+    share = _validate_share(share)
+    if kwargs.get("options"):
+        kwargs["options"] = _validate_options(kwargs["options"])
     config = _load_config()
     mount = {
         "id": str(uuid.uuid4())[:8],
@@ -224,7 +303,10 @@ def add_mount(name, mount_type, host, share, **kwargs):
 
     # Create mount point directory
     mount_path = _mount_path(name)
-    os.makedirs(mount_path, exist_ok=True)
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        subprocess.run(_sudo(["mkdir", "-p", mount_path]), check=False, timeout=5)
+    else:
+        os.makedirs(mount_path, exist_ok=True)
 
     # Write SMB credentials if needed
     _write_smb_credentials(mount)
@@ -260,7 +342,10 @@ def remove_mount(mount_id):
             mount_path = _mount_path(m["name"])
             if os.path.isdir(mount_path):
                 try:
-                    os.rmdir(mount_path)
+                    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+                        subprocess.run(_sudo(["rmdir", mount_path]), check=False, timeout=5)
+                    else:
+                        os.rmdir(mount_path)
                 except OSError:
                     pass  # Directory not empty or still mounted
             config["mounts"].pop(i)
@@ -279,7 +364,7 @@ def mount_share(mount_id):
             if os.environ.get("HARBOUROS_DEV"):
                 return True, "OK (dev mode)"
             result = subprocess.run(
-                ["systemctl", "start", f"{unit_name}.mount"],
+                _sudo(["systemctl", "start", f"{unit_name}.mount"]),
                 capture_output=True, text=True, timeout=30
             )
             if result.returncode == 0:
@@ -298,7 +383,7 @@ def unmount_share(mount_id):
             if os.environ.get("HARBOUROS_DEV"):
                 return True, "OK (dev mode)"
             result = subprocess.run(
-                ["systemctl", "stop", f"{unit_name}.mount"],
+                _sudo(["systemctl", "stop", f"{unit_name}.mount"]),
                 capture_output=True, text=True, timeout=30
             )
             if result.returncode == 0:
@@ -314,7 +399,7 @@ def test_connection(host, mount_type, share=None):
 
     if mount_type == "nfs":
         result = subprocess.run(
-            ["showmount", "-e", host],
+            _sudo(["showmount", "-e", host]),
             capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
@@ -322,7 +407,7 @@ def test_connection(host, mount_type, share=None):
         return False, f"Cannot reach NFS server: {result.stderr.strip()}"
     else:  # smb
         result = subprocess.run(
-            ["smbclient", "-L", f"//{host}", "-N"],
+            _sudo(["smbclient", "-L", f"//{host}", "-N"]),
             capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
@@ -359,7 +444,7 @@ def discover_devices():
     for svc_type, proto in [("_smb._tcp", "smb"), ("_nfs._tcp", "nfs")]:
         try:
             result = subprocess.run(
-                ["avahi-browse", "-tprk", svc_type],
+                _sudo(["avahi-browse", "-tprk", svc_type]),
                 capture_output=True, text=True, timeout=10
             )
             if result.returncode == 0:
@@ -414,7 +499,7 @@ def _discover_nfs_shares(host):
     """Parse NFS exports from showmount output."""
     try:
         result = subprocess.run(
-            ["showmount", "-e", host],
+            _sudo(["showmount", "-e", host]),
             capture_output=True, text=True, timeout=10
         )
         if result.returncode != 0:
@@ -436,9 +521,9 @@ def _discover_smb_shares(host, username=None, password=None):
     """Parse SMB shares from smbclient output."""
     try:
         if username and password:
-            cmd = ["smbclient", "-L", f"//{host}", "-U", f"{username}%{password}"]
+            cmd = _sudo(["smbclient", "-L", f"//{host}", "-U", f"{username}%{password}"])
         else:
-            cmd = ["smbclient", "-L", f"//{host}", "-N"]
+            cmd = _sudo(["smbclient", "-L", f"//{host}", "-N"])
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=10
         )

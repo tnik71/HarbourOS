@@ -41,9 +41,9 @@ def test_verify_wrong_password():
 
 def test_change_password():
     """Changing password updates stored hash."""
-    success, msg = auth_service.change_password("harbouros", "newpass")
+    success, msg = auth_service.change_password("harbouros", "newpass1!")
     assert success is True
-    assert auth_service.verify_password("newpass") is True
+    assert auth_service.verify_password("newpass1!") is True
 
 
 def test_change_password_wrong_current():
