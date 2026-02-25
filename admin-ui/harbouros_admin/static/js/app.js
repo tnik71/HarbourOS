@@ -880,6 +880,9 @@ async function loadEpisodesModal() {
     if (shows && shows.scanned) {
         _episodeShows = shows.shows;
         renderEpisodeShows(_episodeShows);
+    } else if (info && info.available) {
+        // DB exists but no scan results — auto-scan
+        scanPlexEpisodes();
     }
 
     // Reset to grid view
@@ -898,8 +901,19 @@ async function updateEpisodeDb() {
 
 async function scanPlexEpisodes() {
     var msg = document.getElementById('episodes-action-msg');
-    showMessage(msg, 'Scanning Plex library and matching episodes...', 'info');
+    var scanBtn = document.getElementById('episodes-scan-btn');
+
+    // Disable button and show spinner
+    if (scanBtn) { scanBtn.disabled = true; scanBtn.classList.add('btn-disabled'); }
+    msg.style.display = 'block';
+    msg.className = 'message message-info';
+    msg.innerHTML = '<span class="spinner"></span> Scanning Plex library and matching episodes\u2026';
+
     var res = await api('/api/episodes/scan', 'POST');
+
+    // Re-enable button
+    if (scanBtn) { scanBtn.disabled = false; scanBtn.classList.remove('btn-disabled'); }
+
     if (res) {
         showMessage(msg, res.message, res.success ? 'success' : 'error');
         if (res.success) {
@@ -950,7 +964,22 @@ function renderEpisodeShows(shows) {
 
     if (searchBar) searchBar.style.display = 'block';
 
-    el.innerHTML = '<div class="episodes-grid">' + shows.map(function(show) {
+    // Summary line
+    var matched = shows.filter(function(s) { return s.matched; }).length;
+    var unmatched = shows.length - matched;
+    var complete = shows.filter(function(s) { return s.matched && s.completion_pct === 100; }).length;
+    var incomplete = matched - complete;
+    var summary = '<div class="episodes-summary">' +
+        '<span>' + shows.length + ' shows</span>' +
+        '<span class="episodes-summary-sep">&middot;</span>' +
+        '<span>' + matched + ' matched</span>' +
+        (unmatched > 0 ? '<span class="episodes-summary-sep">&middot;</span><span class="episodes-summary-warn">' + unmatched + ' unmatched</span>' : '') +
+        '<span class="episodes-summary-sep">&middot;</span>' +
+        '<span class="episodes-summary-ok">' + complete + ' complete</span>' +
+        (incomplete > 0 ? '<span class="episodes-summary-sep">&middot;</span><span class="episodes-summary-warn">' + incomplete + ' incomplete</span>' : '') +
+        '</div>';
+
+    el.innerHTML = summary + '<div class="episodes-grid">' + shows.map(function(show) {
         if (!show.matched) {
             return '<div class="episode-card episode-card-unmatched episode-card-border-gray">' +
                 '<div class="episode-card-header"><div class="episode-card-title">' + esc(show.plex_title) + '</div></div>' +

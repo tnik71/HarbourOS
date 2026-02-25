@@ -11,10 +11,31 @@ from . import plex_service
 EPISODE_DB_URL = "https://harbouros.eu/db/episode-db.json.gz"
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 LOCAL_DB_PATH = os.path.join(DATA_DIR, "episode-db.json")
+SCAN_RESULTS_PATH = os.path.join(DATA_DIR, "scan-results.json")
 
 # In-memory cache
 _episode_db = None
 _scan_results = None
+
+
+def _load_scan_results():
+    """Load scan results from disk into memory cache."""
+    global _scan_results
+    if _scan_results is not None:
+        return _scan_results
+    try:
+        with open(SCAN_RESULTS_PATH, "r") as f:
+            _scan_results = json.load(f)
+        return _scan_results
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _save_scan_results(results):
+    """Save scan results to disk."""
+    _ensure_data_dir()
+    with open(SCAN_RESULTS_PATH, "w") as f:
+        json.dump(results, f)
 
 
 def _ensure_data_dir():
@@ -336,13 +357,15 @@ def scan_plex_library():
     ))
 
     _scan_results = results
+    _save_scan_results(results)
     matched = sum(1 for r in results if r["matched"])
     return True, f"Scanned {len(results)} shows ({matched} matched, {len(results) - matched} unmatched)"
 
 
 def get_shows_status():
     """Return the latest scan results."""
-    if _scan_results is None:
+    results = _scan_results if _scan_results is not None else _load_scan_results()
+    if results is None:
         return {"scanned": False, "shows": []}
     return {
         "scanned": True,
@@ -359,17 +382,18 @@ def get_shows_status():
                 "missing_count": s["missing_count"],
                 "completion_pct": s["completion_pct"],
             }
-            for s in _scan_results
+            for s in results
         ],
     }
 
 
 def get_missing_episodes(rating_key):
     """Get detailed missing episode info for a specific show."""
-    if _scan_results is None:
+    results = _scan_results if _scan_results is not None else _load_scan_results()
+    if results is None:
         return None
 
-    for show in _scan_results:
+    for show in results:
         if show["rating_key"] == rating_key:
             return {
                 "plex_title": show["plex_title"],
