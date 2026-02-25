@@ -868,10 +868,10 @@ async function loadEpisodesModal() {
     var infoEl = document.getElementById('episodes-db-info');
     if (info && infoEl) {
         if (info.available) {
-            infoEl.innerHTML = '<span class="text-muted text-sm">DB v' + esc(info.version) + ' - ' +
-                info.show_count.toLocaleString() + ' shows</span>';
+            infoEl.textContent = 'DB v' + info.version + ' \u2014 ' +
+                info.show_count.toLocaleString() + ' shows';
         } else {
-            infoEl.innerHTML = '<span class="text-muted text-sm">No database loaded</span>';
+            infoEl.textContent = 'No database loaded';
         }
     }
 
@@ -912,6 +912,31 @@ async function scanPlexEpisodes() {
     }
 }
 
+function _episodeBorderClass(pct, matched) {
+    if (!matched) return 'episode-card-border-gray';
+    if (pct === 100) return 'episode-card-border-green';
+    if (pct >= 75)  return 'episode-card-border-blue';
+    if (pct >= 50)  return 'episode-card-border-orange';
+    return 'episode-card-border-red';
+}
+
+function _episodePctClass(pct) {
+    if (pct === 100) return 'episode-card-pct-green';
+    if (pct >= 75)  return 'episode-card-pct-blue';
+    if (pct >= 50)  return 'episode-card-pct-orange';
+    return 'episode-card-pct-red';
+}
+
+function _episodeStatusBadge(status) {
+    if (!status) return '';
+    var s = status.toLowerCase();
+    var cls = 'ended';
+    if (s.indexOf('return') !== -1) cls = 'returning';
+    else if (s.indexOf('cancel') !== -1) cls = 'canceled';
+    else if (s.indexOf('air') !== -1 || s.indexOf('pilot') !== -1) cls = 'airing';
+    return '<span class="episode-card-badge episode-card-badge-' + cls + '">' + esc(status) + '</span>';
+}
+
 function renderEpisodeShows(shows) {
     var el = document.getElementById('episodes-shows-list');
     var searchBar = document.getElementById('episodes-search-bar');
@@ -927,28 +952,30 @@ function renderEpisodeShows(shows) {
 
     el.innerHTML = '<div class="episodes-grid">' + shows.map(function(show) {
         if (!show.matched) {
-            return '<div class="episode-card episode-card-unmatched">' +
-                '<div class="episode-card-title">' + esc(show.plex_title) + '</div>' +
-                '<div class="episode-card-meta">Not in database</div>' +
+            return '<div class="episode-card episode-card-unmatched episode-card-border-gray">' +
+                '<div class="episode-card-header"><div class="episode-card-title">' + esc(show.plex_title) + '</div></div>' +
+                '<div class="episode-card-missing">Not in database</div>' +
                 '</div>';
         }
 
+        var pct = show.completion_pct;
         var pctClass = '';
-        if (show.completion_pct === 100) pctClass = 'complete';
-        else if (show.completion_pct >= 75) pctClass = 'high';
-        else if (show.completion_pct >= 50) pctClass = 'mid';
+        if (pct === 100) pctClass = 'complete';
+        else if (pct >= 75) pctClass = 'high';
+        else if (pct >= 50) pctClass = 'mid';
         else pctClass = 'low';
 
-        return '<div class="episode-card" onclick="showMissingEpisodes(\'' + esc(show.rating_key) + '\')">' +
+        return '<div class="episode-card ' + _episodeBorderClass(pct, true) + '" onclick="showMissingEpisodes(\'' + esc(show.rating_key) + '\')">' +
+            '<div class="episode-card-header">' +
             '<div class="episode-card-title">' + esc(show.db_title || show.plex_title) + '</div>' +
-            '<div class="episode-progress">' +
-            '<div class="episode-progress-bar"><div class="episode-progress-fill episode-progress-' + pctClass + '" style="width:' + show.completion_pct + '%"></div></div>' +
-            '<span class="episode-progress-pct">' + show.completion_pct + '%</span>' +
+            _episodeStatusBadge(show.status) +
             '</div>' +
-            '<div class="episode-card-stats">' + show.local_episodes + '/' + show.total_episodes + ' episodes</div>' +
-            '<div class="episode-card-meta">' +
-            esc(show.status || '') +
-            (show.missing_count > 0 ? ' - ' + show.missing_count + ' missing' : '') +
+            '<div class="episode-progress"><div class="episode-progress-bar"><div class="episode-progress-fill episode-progress-' + pctClass + '" style="width:' + pct + '%"></div></div></div>' +
+            '<div class="episode-card-stats-row">' +
+            '<span class="episode-card-stats">' + show.local_episodes + '/' + show.total_episodes + ' episodes' +
+            (show.missing_count > 0 ? ' &middot; <span class="episode-card-missing">' + show.missing_count + ' missing</span>' : '') +
+            '</span>' +
+            '<span class="episode-card-pct ' + _episodePctClass(pct) + '">' + pct + '%</span>' +
             '</div>' +
             '</div>';
     }).join('') + '</div>';
@@ -1009,13 +1036,21 @@ async function showMissingEpisodes(ratingKey) {
 
     if (titleEl) titleEl.textContent = res.db_title || res.plex_title;
 
+    // Status badge class
+    var statusCls = 'ended';
+    if (res.status) {
+        var sl = res.status.toLowerCase();
+        if (sl.indexOf('return') !== -1) statusCls = 'returning';
+        else if (sl.indexOf('cancel') !== -1) statusCls = 'canceled';
+    }
+
     var html = '<div class="episode-detail-header">' +
         '<div class="episode-detail-title">' + esc(res.db_title || res.plex_title) + '</div>' +
         '<div class="episode-detail-stats">' +
-        res.local_episodes + '/' + res.total_episodes + ' episodes - ' +
-        res.missing_count + ' missing (' + res.completion_pct + '%)' +
+        res.local_episodes + '/' + res.total_episodes + ' episodes &middot; ' +
+        res.missing_count + ' missing &middot; ' + res.completion_pct + '% complete' +
         '</div>' +
-        (res.status ? '<div class="episode-detail-status">' + esc(res.status) + '</div>' : '') +
+        (res.status ? '<div class="episode-detail-status episode-detail-status-' + statusCls + '">' + esc(res.status) + '</div>' : '') +
         '</div>';
 
     if (res.seasons && res.seasons.length > 0) {
@@ -1024,11 +1059,19 @@ async function showMissingEpisodes(ratingKey) {
             var isComplete = season.missing.length === 0 && season.not_aired === 0;
             var allUnaired = season.total_aired === 0 && season.not_aired > 0;
 
+            // Season progress percentage
+            var seasonPct = season.total_aired > 0 ? Math.round((season.local / season.total_aired) * 100) : 0;
+            var seasonFillColor = '#22c55e';
+            if (seasonPct < 50) seasonFillColor = '#ef4444';
+            else if (seasonPct < 75) seasonFillColor = '#f59e0b';
+            else if (seasonPct < 100) seasonFillColor = '#2563eb';
+
             html += '<div class="episode-season' + (allUnaired ? ' season-unaired' : '') + '">' +
                 '<div class="episode-season-header" onclick="this.parentElement.classList.toggle(\'open\')">' +
                 '<span class="episode-season-toggle">&#9654;</span>' +
                 '<span class="episode-season-name">Season ' + season.number + '</span>' +
-                '<span class="episode-season-count">(' + season.local + '/' + season.total_aired + ')</span>';
+                '<span class="episode-season-count">' + season.local + '/' + season.total_aired + '</span>' +
+                '<div class="episode-season-progress"><div class="episode-season-progress-fill" style="width:' + seasonPct + '%;background:' + seasonFillColor + '"></div></div>';
 
             if (isComplete && season.total_aired > 0) {
                 html += '<span class="episode-season-badge complete">Complete</span>';
