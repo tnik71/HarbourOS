@@ -28,6 +28,9 @@ fi
 
 cd "${REPO_DIR}"
 
+# Allow root to operate on repo owned by harbouros user (Git 2.35.2+ safety check)
+git config --global --add safe.directory "${REPO_DIR}" 2>/dev/null
+
 # --- Read current version ---
 OLD_VERSION="unknown"
 if [ -f "${REPO_DIR}/VERSION" ]; then

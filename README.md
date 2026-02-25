@@ -10,9 +10,10 @@ A custom Raspberry Pi OS image that turns a Raspberry Pi 5 into a dedicated Plex
 - System monitoring (CPU, RAM, disk, temperature, services)
 - Network configuration (hostname, DHCP/static IP)
 - First-boot setup wizard
+- Episode Manager — find missing TV episodes against 21,000+ shows database
 - Session-based authentication with bcrypt password hashing
 - Docker Plex migration tool (preserves libraries, watch history, metadata)
-- Security hardening
+- Security hardening (CSRF protection, non-root service, rate limiting, security headers)
 
 ## Architecture
 
@@ -21,7 +22,7 @@ Flask + Gunicorn (:8080)  →  5 service modules  →  systemctl / psutil / conf
 
 Templates: base.html → dashboard.html (SPA with modals), login.html, setup.html
 Static:    app.js, style.css
-Tests:     74 (test_app.py, test_auth_service.py, test_mount_manager.py)
+Tests:     89 (test_app.py, test_auth_service.py, test_mount_manager.py)
 Build:     pi-gen stages → Raspberry Pi OS image
 ```
 
@@ -93,6 +94,7 @@ admin-ui/               Flask application
       mount_manager.py  NAS mount CRUD and systemd unit generation
       network_manager.py Hostname and IP configuration
       plex_service.py   Plex Media Server control
+      episodes_service.py Episode Manager — missing episode detection
       system_info.py    System status, logs, updates, disk info
     templates/          Jinja2 templates
     static/             CSS, JS, images
