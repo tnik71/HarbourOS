@@ -4,6 +4,7 @@ import os
 import time
 from collections import defaultdict
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
@@ -21,6 +22,12 @@ if os.environ.get("HARBOUROS_DEV"):
     import tempfile
     SETUP_FLAG = os.path.join(tempfile.gettempdir(), "harbouros-setup-complete")
 
+# Endpoints allowed without authentication during setup mode
+_SETUP_ENDPOINTS = {
+    "/", "/setup", "/login",
+    "/api/auth/status", "/api/auth/logout",
+    "/api/system/password", "/api/setup/complete",
+}
 
 _MAX_ATTEMPTS = 5
 _WINDOW_SECONDS = 60
@@ -41,16 +48,52 @@ def _record_attempt(ip):
     _login_attempts[ip].append(time.time())
 
 
+def _check_csrf():
+    """Validate Origin/Referer header on state-changing requests."""
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    origin = request.headers.get("Origin") or request.headers.get("Referer")
+    if not origin:
+        # Allow requests with no Origin (e.g. curl, non-browser clients)
+        return None
+    parsed = urlparse(origin)
+    request_host = request.host.split(":")[0]
+    origin_host = parsed.hostname or ""
+    if origin_host != request_host:
+        return jsonify({"error": "Cross-origin request blocked"}), 403
+    return None
+
+
 def create_app():
     app = Flask(__name__)
     app.secret_key = auth_service.get_or_create_secret_key()
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    @app.before_request
+    def csrf_check():
+        return _check_csrf()
+
+    @app.after_request
+    def set_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+        )
+        return response
 
     def login_required(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            # Allow access during initial setup (before first-boot wizard completes)
             if not os.path.exists(SETUP_FLAG):
-                return f(*args, **kwargs)
+                # During setup, only allow setup-related endpoints
+                if request.path in _SETUP_ENDPOINTS:
+                    return f(*args, **kwargs)
+                if request.path.startswith("/api/"):
+                    return jsonify({"error": "Complete setup first"}), 403
+                return redirect(url_for("setup"))
             if not session.get("authenticated"):
                 if request.path.startswith("/api/"):
                     return jsonify({"error": "Authentication required"}), 401
@@ -268,16 +311,19 @@ def create_app():
         if data["type"] not in ("nfs", "smb"):
             return jsonify({"error": "Type must be 'nfs' or 'smb'"}), 400
 
-        mount = mount_manager.add_mount(
-            name=data["name"],
-            mount_type=data["type"],
-            host=data["host"],
-            share=data["share"],
-            username=data.get("username"),
-            password=data.get("password"),
-            domain=data.get("domain"),
-            options=data.get("options"),
-        )
+        try:
+            mount = mount_manager.add_mount(
+                name=data["name"],
+                mount_type=data["type"],
+                host=data["host"],
+                share=data["share"],
+                username=data.get("username"),
+                password=data.get("password"),
+                domain=data.get("domain"),
+                options=data.get("options"),
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         return jsonify({"mount": mount}), 201
 
     @app.route("/api/mounts/<mount_id>", methods=["PUT"])

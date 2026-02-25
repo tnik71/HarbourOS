@@ -73,8 +73,8 @@ def change_password(current_password, new_password):
     """Change the admin password."""
     if not verify_password(current_password):
         return False, "Current password is incorrect"
-    if len(new_password) < 4:
-        return False, "New password must be at least 4 characters"
+    if len(new_password) < 8:
+        return False, "New password must be at least 8 characters"
 
     config = _load_auth_config()
     config["password_hash"] = _hash_password(new_password)
@@ -92,8 +92,11 @@ def change_password(current_password, new_password):
             )
             sys_user = result.stdout.strip()
             if sys_user:
+                chpasswd_cmd = ["chpasswd"]
+                if os.getuid() != 0:
+                    chpasswd_cmd = ["sudo", "chpasswd"]
                 subprocess.run(
-                    ["chpasswd"],
+                    chpasswd_cmd,
                     input=f"{sys_user}:{new_password}",
                     capture_output=True, text=True, timeout=10
                 )

@@ -1,5 +1,6 @@
 """Network configuration service."""
 
+import ipaddress
 import os
 import socket
 import subprocess
@@ -7,6 +8,13 @@ import subprocess
 import psutil
 
 DHCPCD_CONF = "/etc/dhcpcd.conf"
+
+
+def _sudo(cmd):
+    """Prepend sudo to a command when running as non-root."""
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        return ["sudo"] + cmd
+    return cmd
 
 
 def _run(cmd):
@@ -93,7 +101,7 @@ def set_hostname(new_hostname):
         return True, f"Hostname would be set to: {new_hostname}"
 
     result = subprocess.run(
-        ["hostnamectl", "set-hostname", new_hostname],
+        _sudo(["hostnamectl", "set-hostname", new_hostname]),
         capture_output=True, text=True, timeout=10
     )
     if result.returncode == 0:
@@ -135,6 +143,19 @@ def set_network_config(mode, interface="eth0", ip=None, netmask=None,
     if mode == "static":
         if not all([ip, netmask, gateway]):
             return False, "Static mode requires ip, netmask, and gateway"
+        # Validate IP addresses
+        try:
+            ipaddress.IPv4Address(ip)
+            ipaddress.IPv4Address(netmask)
+            ipaddress.IPv4Address(gateway)
+        except (ipaddress.AddressValueError, ValueError) as e:
+            return False, f"Invalid IP address: {e}"
+        if dns:
+            for d in dns.replace(",", " ").split():
+                try:
+                    ipaddress.IPv4Address(d.strip())
+                except (ipaddress.AddressValueError, ValueError):
+                    return False, f"Invalid DNS address: {d.strip()}"
         prefix = sum(bin(int(x)).count("1") for x in netmask.split("."))
         block = (
             f"\ninterface {interface}\n"
@@ -145,7 +166,16 @@ def set_network_config(mode, interface="eth0", ip=None, netmask=None,
             block += f"static domain_name_servers={dns}\n"
         cleaned.append(block)
 
-    with open(DHCPCD_CONF, "w") as f:
-        f.writelines(cleaned)
+    content = "".join(cleaned)
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        result = subprocess.run(
+            ["sudo", "tee", DHCPCD_CONF],
+            input=content, capture_output=True, text=True, timeout=10
+        )
+        if result.returncode != 0:
+            return False, f"Failed to write network config: {result.stderr.strip()}"
+    else:
+        with open(DHCPCD_CONF, "w") as f:
+            f.write(content)
 
     return True, "Network configuration updated. You may need to reconnect at the new IP."

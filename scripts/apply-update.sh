@@ -45,11 +45,46 @@ if [ ! -f "${MIGRATION_FLAG}" ]; then
     echo "  v1.0.2 migration complete."
 fi
 
+# --- One-time migration (v1.0.5: run as non-root harbouros user) ---
+MIGRATION_105="/etc/harbouros/.migration-1.0.5"
+if [ ! -f "${MIGRATION_105}" ]; then
+    echo "  Running v1.0.5 migration (non-root service user)..."
+
+    # Create harbouros system user if missing
+    if ! id -u harbouros >/dev/null 2>&1; then
+        useradd --system --no-create-home --shell /usr/sbin/nologin harbouros
+        echo "  Created harbouros system user."
+    fi
+
+    # Set ownership on config and app dirs
+    chown -R harbouros:harbouros /etc/harbouros
+    chown -R harbouros:harbouros /opt/harbouros
+
+    # Install sudoers file
+    if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
+        install -m 440 "${STAGING}/config/harbouros-sudoers" /etc/sudoers.d/harbouros
+        echo "  Installed sudoers file."
+    fi
+
+    touch "${MIGRATION_105}"
+    NEED_RESTART=1
+    echo "  v1.0.5 migration complete."
+fi
+
+# --- Sudoers file (update on every deploy) ---
+if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
+    if ! diff -q "${STAGING}/config/harbouros-sudoers" "/etc/sudoers.d/harbouros" >/dev/null 2>&1; then
+        echo "  Updating sudoers file..."
+        install -m 440 "${STAGING}/config/harbouros-sudoers" /etc/sudoers.d/harbouros
+    fi
+fi
+
 # --- Admin UI code ---
 if [ -d "${STAGING}/harbouros_admin" ]; then
     echo "  Updating admin UI code..."
     rm -rf "${ADMIN_DIR}/harbouros_admin"
     cp -r "${STAGING}/harbouros_admin" "${ADMIN_DIR}/harbouros_admin"
+    chown -R harbouros:harbouros "${ADMIN_DIR}/harbouros_admin"
     NEED_RESTART=1
 fi
 
