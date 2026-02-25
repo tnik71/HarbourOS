@@ -253,9 +253,11 @@ def create_app():
         if os.environ.get("HARBOUROS_DEV"):
             return jsonify({"success": True, "message": "Update check triggered (dev mode)"})
         import subprocess
+        cmd = ["/usr/local/bin/harbouros-plex-update.sh"]
+        if os.getuid() != 0:
+            cmd = ["sudo"] + cmd
         result = subprocess.run(
-            ["/usr/local/bin/harbouros-plex-update.sh"],
-            capture_output=True, text=True, timeout=120
+            cmd, capture_output=True, text=True, timeout=120
         )
         return jsonify({
             "success": result.returncode == 0,
