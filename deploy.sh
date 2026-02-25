@@ -2,11 +2,12 @@
 set -euo pipefail
 
 # HarbourOS Deploy — Push updates to a running Pi
-# Usage: ./deploy.sh [hostname]
+# Usage: ./deploy.sh [hostname] [ssh-user]
 #   hostname defaults to harbouros.local
+#   ssh-user defaults to current user ($(whoami))
 
 PI_HOST="${1:-harbouros.local}"
-PI_USER="harbouros"
+PI_USER="${2:-$(whoami)}"
 PI_TARGET="${PI_USER}@${PI_HOST}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
