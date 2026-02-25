@@ -1,6 +1,7 @@
 # HarbourOS — Targeted sudo access for the harbouros service user
 # Installed to /etc/sudoers.d/harbouros
 
+# Systemd service management
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start *
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop *
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart *
@@ -9,22 +10,58 @@ harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl disable *
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl daemon-reload
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active *
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl status *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
+
+# Hostname
 harbouros ALL=(root) NOPASSWD: /usr/bin/hostnamectl set-hostname *
+
+# Authentication
 harbouros ALL=(root) NOPASSWD: /usr/sbin/chpasswd
+
+# Network config
 harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/dhcpcd.conf
+
+# NAS mount units
 harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/systemd/system/*.mount
 harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/systemd/system/*.automount
 harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/systemd/system/*.mount
 harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/systemd/system/*.automount
+
+# SMB credentials
 harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/harbouros/smb-*.creds
 harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/harbouros/smb-*.creds
+harbouros ALL=(root) NOPASSWD: /usr/bin/chmod 600 /etc/harbouros/smb-*
+
+# Mount point directories
 harbouros ALL=(root) NOPASSWD: /usr/bin/mkdir -p /media/nas/*
 harbouros ALL=(root) NOPASSWD: /usr/bin/rmdir /media/nas/*
+
+# HarbourOS self-update
+harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-self-update.sh
+harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-self-update.sh --check-only
+
+# Plex update
 harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-plex-update.sh
+
+# Package management
+harbouros ALL=(root) NOPASSWD: /usr/bin/apt list --upgradable
+harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get update *
+harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get upgrade *
+
+# System info and diagnostics
 harbouros ALL=(root) NOPASSWD: /usr/bin/sysctl --system
 harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl *
+harbouros ALL=(root) NOPASSWD: /usr/bin/lsblk *
+harbouros ALL=(root) NOPASSWD: /usr/bin/dpkg-query *
+harbouros ALL=(root) NOPASSWD: /usr/bin/tail *
+
+# Power management
 harbouros ALL=(root) NOPASSWD: /usr/sbin/shutdown *
 harbouros ALL=(root) NOPASSWD: /usr/sbin/reboot
+
+# NAS discovery
 harbouros ALL=(root) NOPASSWD: /usr/bin/showmount *
 harbouros ALL=(root) NOPASSWD: /usr/bin/smbclient *
 harbouros ALL=(root) NOPASSWD: /usr/bin/avahi-browse *

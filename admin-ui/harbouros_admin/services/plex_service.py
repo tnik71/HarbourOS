@@ -7,6 +7,15 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 SERVICE_NAME = "plexmediaserver"
+
+
+def _sudo(cmd):
+    """Prepend sudo to a command when running as non-root."""
+    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        return ["sudo"] + cmd
+    return cmd
+
+
 PLEX_LOG_DIR = (
     "/var/lib/plexmediaserver/Library/Application Support"
     "/Plex Media Server/Logs"
@@ -23,7 +32,7 @@ def _run(cmd, check=False):
     if os.environ.get("HARBOUROS_DEV"):
         return _mock_run(cmd)
     return subprocess.run(
-        cmd, capture_output=True, text=True, check=check, timeout=30
+        _sudo(cmd), capture_output=True, text=True, check=check, timeout=30
     )
 
 
@@ -115,7 +124,7 @@ def get_logs(lines=50):
     log_file = os.path.join(PLEX_LOG_DIR, "Plex Media Server.log")
     try:
         result = subprocess.run(
-            ["tail", "-n", str(lines), log_file],
+            _sudo(["tail", "-n", str(lines), log_file]),
             capture_output=True, text=True, timeout=10
         )
         if result.returncode == 0:
