@@ -139,10 +139,15 @@ def get_plex_token():
     if os.environ.get("HARBOUROS_DEV"):
         return "dev-mock-token"
     try:
-        tree = ET.parse(PLEX_PREFS_PATH)
-        root = tree.getroot()
+        result = subprocess.run(
+            _sudo(["cat", PLEX_PREFS_PATH]),
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode != 0:
+            return None
+        root = ET.fromstring(result.stdout)
         return root.get("PlexOnlineToken")
-    except (FileNotFoundError, ET.ParseError):
+    except (ET.ParseError, subprocess.TimeoutExpired):
         return None
 
 

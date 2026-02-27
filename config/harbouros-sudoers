@@ -45,6 +45,9 @@ harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-self-update.sh --check-o
 # Plex update
 harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-plex-update.sh
 
+# Plex preferences (read-only for token extraction)
+harbouros ALL=(root) NOPASSWD: /usr/bin/cat /var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml
+
 # Package management
 harbouros ALL=(root) NOPASSWD: /usr/bin/apt list --upgradable
 harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get update *

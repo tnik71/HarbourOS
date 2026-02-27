@@ -1,6 +1,5 @@
 """Episode Manager service - compares Plex library against central episode DB."""
 
-import gzip
 import json
 import os
 import re
@@ -8,7 +7,8 @@ import urllib.request
 
 from . import plex_service
 
-EPISODE_DB_URL = "https://harbouros.eu/db/episode-db.json.gz"
+EPISODE_DB_API = "https://harbouros.eu/db/api.php"
+EPISODE_DB_SECRET = "c65f3345d88f8da55c76fd7d7a032e39"
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 LOCAL_DB_PATH = os.path.join(DATA_DIR, "episode-db.json")
 SCAN_RESULTS_PATH = os.path.join(DATA_DIR, "scan-results.json")
@@ -63,8 +63,9 @@ def _load_db():
 def _normalize_title(title):
     """Normalize a title for fuzzy matching."""
     s = title.lower()
-    # Remove year suffixes like (2024)
+    # Remove year suffixes like (2024) and country codes like (US), (UK)
     s = re.sub(r'\s*\(\d{4}\)\s*$', '', s)
+    s = re.sub(r'\s*\([a-z]{2,3}\)\s*$', '', s)
     # Remove common articles
     s = re.sub(r'^(the|a|an)\s+', '', s)
     # Remove punctuation and extra whitespace
@@ -73,8 +74,18 @@ def _normalize_title(title):
     return s
 
 
+def _get_show_year(show):
+    """Extract the premiere year from a show's first episode air date."""
+    for season in show.get("seasons", []):
+        for ep in season.get("episodes", []):
+            air_date = ep.get("air_date")
+            if air_date:
+                return air_date[:4]
+    return None
+
+
 def update_episode_db():
-    """Download the latest episode database from harbouros.eu."""
+    """Download episode data for this Pi's Plex shows from the API."""
     global _episode_db
 
     if os.environ.get("HARBOUROS_DEV"):
@@ -83,17 +94,24 @@ def update_episode_db():
     _ensure_data_dir()
 
     try:
+        # Get this Pi's Plex shows to know which TMDB IDs we need
+        plex_shows = _get_plex_tv_shows()
+        tmdb_ids = [s["tmdb_id"] for s in plex_shows if s.get("tmdb_id")]
+
+        if not tmdb_ids:
+            return False, "No Plex shows with TMDB IDs found."
+
+        # Query the API for just these shows (~4MB instead of 167MB)
+        ids_str = ",".join(str(i) for i in tmdb_ids)
+        url = (
+            f"{EPISODE_DB_API}?key={EPISODE_DB_SECRET}"
+            f"&action=lookup&ids={ids_str}"
+        )
         req = urllib.request.Request(
-            EPISODE_DB_URL,
-            headers={
-                "Accept-Encoding": "gzip",
-                "User-Agent": "HarbourOS/1.0",
-            },
+            url, headers={"User-Agent": "HarbourOS/1.0"}
         )
         with urllib.request.urlopen(req, timeout=60) as resp:
-            compressed = resp.read()
-            raw = gzip.decompress(compressed)
-            data = json.loads(raw.decode("utf-8"))
+            data = json.loads(resp.read().decode("utf-8"))
 
         # Save to local cache
         with open(LOCAL_DB_PATH, "w") as f:
@@ -164,16 +182,27 @@ def _get_plex_tv_shows():
                 continue
             key = section.get("key")
             req = urllib.request.Request(
-                plex_service.PLEX_BASE_URL + f"/library/sections/{key}/all?type=2",
+                plex_service.PLEX_BASE_URL
+                + f"/library/sections/{key}/all?type=2&includeGuids=1",
                 headers=headers,
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode())
                 for show in data.get("MediaContainer", {}).get("Metadata", []):
+                    tmdb_id = None
+                    for g in show.get("Guid", []):
+                        gid = g.get("id", "")
+                        if gid.startswith("tmdb://"):
+                            try:
+                                tmdb_id = int(gid[7:])
+                            except ValueError:
+                                pass
+                            break
                     shows.append({
                         "rating_key": show.get("ratingKey"),
                         "title": show.get("title"),
                         "year": show.get("year"),
+                        "tmdb_id": tmdb_id,
                         "library": section.get("title"),
                     })
     except Exception:
@@ -231,26 +260,65 @@ def _get_plex_episodes(rating_key):
     return episodes
 
 
-def _match_show(plex_title, db):
-    """Match a Plex show title to a central DB entry."""
-    normalized_plex = _normalize_title(plex_title)
+def _match_show(plex_title, db, plex_year=None, plex_tmdb_id=None,
+                tmdb_lookup=None):
+    """Match a Plex show to a DB entry. Prefers TMDB ID, falls back to title."""
+    # Direct TMDB ID match — fast and unambiguous
+    if plex_tmdb_id and tmdb_lookup:
+        match = tmdb_lookup.get(plex_tmdb_id)
+        if match:
+            return match
+        # Has TMDB ID but not in DB — report as unmatched so it gets added
+        return None
 
-    # Exact title match (case-insensitive)
+    # Fall back to title matching for shows without TMDB ID
+    normalized_plex = _normalize_title(plex_title)
+    candidates = []
+
     for show in db.get("shows", []):
         if show["title"].lower() == plex_title.lower():
-            return show
-
-    # Normalized match
-    for show in db.get("shows", []):
+            candidates.append(show)
+            continue
         if _normalize_title(show["title"]) == normalized_plex:
-            return show
+            candidates.append(show)
+            continue
+        for alias in show.get("aliases", []):
+            if _normalize_title(alias) == normalized_plex:
+                candidates.append(show)
+                break
 
-    # Alias match
-    for show in db.get("shows", []):
-        if normalized_plex in show.get("aliases", []):
-            return show
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
 
-    return None
+    # Multiple matches — disambiguate by year
+    if plex_year:
+        for show in candidates:
+            show_year = _get_show_year(show)
+            if show_year and str(show_year) == str(plex_year):
+                return show
+
+    return candidates[0]
+
+
+def _request_missing_shows(tmdb_ids):
+    """Ask harbouros.eu to add missing shows to the central episode DB."""
+    if not tmdb_ids or os.environ.get("HARBOUROS_DEV"):
+        return
+
+    try:
+        url = f"{EPISODE_DB_API}?key={EPISODE_DB_SECRET}&action=add-shows"
+        body = json.dumps({"tmdb_ids": tmdb_ids}).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read().decode())
+    except Exception:
+        return None
 
 
 def scan_plex_library():
@@ -265,16 +333,28 @@ def scan_plex_library():
     if not plex_shows:
         return False, "No TV shows found in Plex library."
 
+    # Build TMDB ID lookup for O(1) matching
+    tmdb_lookup = {
+        show["tmdb_id"]: show
+        for show in db.get("shows", [])
+        if show.get("tmdb_id")
+    }
+
     results = []
     for plex_show in plex_shows:
-        db_show = _match_show(plex_show["title"], db)
+        db_show = _match_show(
+            plex_show["title"], db,
+            plex_year=plex_show.get("year"),
+            plex_tmdb_id=plex_show.get("tmdb_id"),
+            tmdb_lookup=tmdb_lookup,
+        )
         if db_show is None:
             results.append({
                 "plex_title": plex_show["title"],
                 "rating_key": plex_show["rating_key"],
                 "library": plex_show.get("library", ""),
                 "matched": False,
-                "tmdb_id": None,
+                "tmdb_id": plex_show.get("tmdb_id"),
                 "db_title": None,
                 "status": None,
                 "total_episodes": 0,
@@ -359,7 +439,23 @@ def scan_plex_library():
     _scan_results = results
     _save_scan_results(results)
     matched = sum(1 for r in results if r["matched"])
-    return True, f"Scanned {len(results)} shows ({matched} matched, {len(results) - matched} unmatched)"
+    unmatched = len(results) - matched
+
+    # Request missing shows to be added to the central DB
+    missing_tmdb_ids = [
+        r["tmdb_id"] for r in results
+        if not r["matched"] and r.get("tmdb_id")
+    ]
+    add_msg = ""
+    if missing_tmdb_ids:
+        add_result = _request_missing_shows(missing_tmdb_ids)
+        if add_result and add_result.get("added", 0) > 0:
+            add_msg = (
+                f". {add_result['added']} new shows submitted to database"
+                " — update DB and rescan to match them"
+            )
+
+    return True, f"Scanned {len(results)} shows ({matched} matched, {unmatched} unmatched{add_msg})"
 
 
 def get_shows_status():
@@ -554,12 +650,12 @@ def _mock_episode_db():
 def _mock_plex_shows():
     """Return mock Plex TV shows for dev mode."""
     return [
-        {"rating_key": "1001", "title": "Breaking Bad", "year": 2008, "library": "TV Shows"},
-        {"rating_key": "1002", "title": "The Bear", "year": 2022, "library": "TV Shows"},
-        {"rating_key": "1003", "title": "Severance", "year": 2022, "library": "TV Shows"},
-        {"rating_key": "1004", "title": "House of the Dragon", "year": 2022, "library": "TV Shows"},
-        {"rating_key": "1005", "title": "The Last of Us", "year": 2023, "library": "TV Shows"},
-        {"rating_key": "1006", "title": "Slow Horses", "year": 2022, "library": "TV Shows"},
+        {"rating_key": "1001", "title": "Breaking Bad", "year": 2008, "tmdb_id": 1396, "library": "TV Shows"},
+        {"rating_key": "1002", "title": "The Bear", "year": 2022, "tmdb_id": 136315, "library": "TV Shows"},
+        {"rating_key": "1003", "title": "Severance", "year": 2022, "tmdb_id": 97186, "library": "TV Shows"},
+        {"rating_key": "1004", "title": "House of the Dragon", "year": 2022, "tmdb_id": 94997, "library": "TV Shows"},
+        {"rating_key": "1005", "title": "The Last of Us", "year": 2023, "tmdb_id": 100088, "library": "TV Shows"},
+        {"rating_key": "1006", "title": "Slow Horses", "year": 2022, "tmdb_id": 99246, "library": "TV Shows"},
     ]
 
 
