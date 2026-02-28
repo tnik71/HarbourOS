@@ -28,24 +28,26 @@ fi
 
 cd "${REPO_DIR}"
 
-# Allow root to operate on repo owned by harbouros user (Git 2.35.2+ safety check)
-git config --global --add safe.directory "${REPO_DIR}" 2>/dev/null
+# Allow root to operate on repo owned by harbouros user (Git 2.35.2+ safety check).
+# Use per-command -c flag instead of --global config, which is unreliable across
+# sudo contexts (HOME varies) and creates duplicate entries.
+GIT="git -c safe.directory=${REPO_DIR}"
 
 # --- Read current version ---
 OLD_VERSION="unknown"
 if [ -f "${REPO_DIR}/VERSION" ]; then
     OLD_VERSION=$(tr -d '[:space:]' < "${REPO_DIR}/VERSION")
 fi
-LOCAL_SHA=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+LOCAL_SHA=$($GIT rev-parse HEAD 2>/dev/null || echo "unknown")
 
 # --- Fetch latest from GitHub ---
-git fetch origin "${BRANCH}" >> "$LOG" 2>&1
+$GIT fetch origin "${BRANCH}" >> "$LOG" 2>&1
 if [ $? -ne 0 ]; then
     log "ERROR: git fetch failed (network issue?)."
     exit 1
 fi
 
-REMOTE_SHA=$(git rev-parse "origin/${BRANCH}" 2>/dev/null)
+REMOTE_SHA=$($GIT rev-parse "origin/${BRANCH}" 2>/dev/null)
 
 if [ "${LOCAL_SHA}" = "${REMOTE_SHA}" ]; then
     log "HarbourOS is up to date (${OLD_VERSION}, ${LOCAL_SHA:0:8}). No action needed."
@@ -59,7 +61,7 @@ EOF
 fi
 
 # --- Update available ---
-REMOTE_VERSION=$(git show "origin/${BRANCH}:VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
+REMOTE_VERSION=$($GIT show "origin/${BRANCH}:VERSION" 2>/dev/null | tr -d '[:space:]' || echo "unknown")
 log "Update available: ${OLD_VERSION} (${LOCAL_SHA:0:8}) -> ${REMOTE_VERSION} (${REMOTE_SHA:0:8})"
 
 mkdir -p /var/lib/harbouros
@@ -77,7 +79,7 @@ fi
 log "Applying update..."
 ROLLBACK_SHA="${LOCAL_SHA}"
 
-git reset --hard "origin/${BRANCH}" >> "$LOG" 2>&1
+$GIT reset --hard "origin/${BRANCH}" >> "$LOG" 2>&1
 
 # Stage files in the same layout deploy.sh uses
 STAGING="/tmp/harbouros-deploy"
@@ -98,7 +100,7 @@ APPLY_EXIT=$?
 if [ ${APPLY_EXIT} -ne 0 ]; then
     log "ERROR: apply-update.sh failed (exit ${APPLY_EXIT}). Rolling back..."
     cd "${REPO_DIR}"
-    git reset --hard "${ROLLBACK_SHA}" >> "$LOG" 2>&1
+    $GIT reset --hard "${ROLLBACK_SHA}" >> "$LOG" 2>&1
 
     # Re-stage old code and apply
     rm -rf "${STAGING}"

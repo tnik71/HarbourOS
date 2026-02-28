@@ -321,7 +321,17 @@ def trigger_harbouros_update_check():
         timeout=300,
     )
     success = result.returncode == 0
-    output = result.stdout.strip() if success else result.stderr.strip()
+    if success:
+        output = result.stdout.strip() or "Update completed successfully"
+    else:
+        # Script redirects all output to log file, so stderr is empty.
+        # Read the last few lines from the log for a meaningful error message.
+        try:
+            with open(HARBOUROS_UPDATE_LOG) as f:
+                lines = f.read().strip().split("\n")
+                output = "\n".join(lines[-5:])
+        except FileNotFoundError:
+            output = result.stderr.strip() or "Update failed (no log available)"
     return success, output
 
 
