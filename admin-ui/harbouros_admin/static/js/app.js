@@ -762,14 +762,34 @@ async function triggerHarbourOSUpdate() {
     logEl.textContent = 'Checking for updates from GitHub...\n';
     showMessage(msg, 'Update in progress \u2014 this may take a minute...', 'info');
     var res = await api('/api/harbouros/update', 'POST');
-    btn.disabled = false;
-    btn.textContent = 'Install Update';
     if (res) {
+        btn.disabled = false;
+        btn.textContent = 'Install Update';
         logEl.textContent = res.output || '';
         logEl.scrollTop = logEl.scrollHeight;
         showMessage(msg, res.success ? 'Update applied successfully!' : ('Update failed: ' + (res.message || '')), res.success ? 'success' : 'error');
         if (res.success) setTimeout(function() { checkHarbourOSUpdate(); }, 3000);
+        return;
     }
+    /* Connection dropped — service likely restarted after applying update.
+       Poll until it comes back, then refresh the status display. */
+    logEl.textContent = 'Service restarting...\n';
+    showMessage(msg, 'Service is restarting \u2014 waiting for it to come back...', 'info');
+    for (var i = 0; i < 20; i++) {
+        await new Promise(function(r) { setTimeout(r, 3000); });
+        var status = await api('/api/harbouros/update/status');
+        if (status) {
+            btn.disabled = false;
+            btn.textContent = 'Install Update';
+            showMessage(msg, 'Update applied successfully!', 'success');
+            loadHarbourOSLog();
+            checkHarbourOSUpdate();
+            return;
+        }
+    }
+    btn.disabled = false;
+    btn.textContent = 'Install Update';
+    showMessage(msg, 'Service did not respond after restart. Try refreshing the page.', 'error');
 }
 
 function toggleHarbourOSLog() {
