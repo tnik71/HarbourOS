@@ -81,6 +81,16 @@ ROLLBACK_SHA="${LOCAL_SHA}"
 
 $GIT reset --hard "origin/${BRANCH}" >> "$LOG" 2>&1
 
+# Write success status now, before apply-update.sh — because the apply script
+# restarts the harbouros service, which kills this process via the cgroup.
+# If apply fails, the rollback block below overwrites this with an error.
+NEW_VERSION=$(tr -d '[:space:]' < "${REPO_DIR}/VERSION" 2>/dev/null || echo "unknown")
+log "Updated HarbourOS: ${OLD_VERSION} -> ${NEW_VERSION} (${REMOTE_SHA:0:8})"
+mkdir -p /var/lib/harbouros
+cat > /var/lib/harbouros/update-status.json << EOF
+{"update_available": false, "current_version": "${NEW_VERSION}", "current_sha": "${REMOTE_SHA:0:8}", "last_check": "$(date -Iseconds)", "last_update": "$(date -Iseconds)", "previous_version": "${OLD_VERSION}"}
+EOF
+
 # Stage files in the same layout deploy.sh uses
 STAGING="/tmp/harbouros-deploy"
 rm -rf "${STAGING}"
@@ -120,14 +130,6 @@ EOF
     TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
     exit 1
 fi
-
-# --- Success ---
-NEW_VERSION=$(tr -d '[:space:]' < "${REPO_DIR}/VERSION" 2>/dev/null || echo "unknown")
-log "Updated HarbourOS: ${OLD_VERSION} -> ${NEW_VERSION} (${REMOTE_SHA:0:8})"
-
-cat > /var/lib/harbouros/update-status.json << EOF
-{"update_available": false, "current_version": "${NEW_VERSION}", "current_sha": "${REMOTE_SHA:0:8}", "last_check": "$(date -Iseconds)", "last_update": "$(date -Iseconds)", "previous_version": "${OLD_VERSION}"}
-EOF
 
 # Keep log from growing forever
 TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
