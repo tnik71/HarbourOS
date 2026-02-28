@@ -56,7 +56,7 @@ if [ "${LOCAL_SHA}" = "${REMOTE_SHA}" ]; then
 {"update_available": false, "current_version": "${OLD_VERSION}", "current_sha": "${LOCAL_SHA:0:8}", "last_check": "$(date -Iseconds)"}
 EOF
     # Keep log from growing forever
-    tail -200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+    TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
     exit 0
 fi
 
@@ -71,7 +71,7 @@ EOF
 
 if [ "${CHECK_ONLY}" -eq 1 ]; then
     log "Check-only mode: update available but not applying."
-    tail -200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+    TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
     exit 0
 fi
 
@@ -117,7 +117,7 @@ if [ ${APPLY_EXIT} -ne 0 ]; then
     cat > /var/lib/harbouros/update-status.json << EOF
 {"update_available": true, "current_version": "${OLD_VERSION}", "current_sha": "${ROLLBACK_SHA:0:8}", "new_version": "${REMOTE_VERSION}", "new_sha": "${REMOTE_SHA:0:8}", "last_check": "$(date -Iseconds)", "last_error": "Update failed, rolled back automatically."}
 EOF
-    tail -200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+    TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
     exit 1
 fi
 
@@ -130,4 +130,4 @@ cat > /var/lib/harbouros/update-status.json << EOF
 EOF
 
 # Keep log from growing forever
-tail -200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
