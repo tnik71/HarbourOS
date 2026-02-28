@@ -1,14 +1,34 @@
 """Episode Manager service - compares Plex library against central episode DB."""
 
 import json
+import logging
 import os
 import re
+import urllib.error
 import urllib.request
 
 from . import plex_service
 
+log = logging.getLogger(__name__)
+
 EPISODE_DB_API = "https://harbouros.eu/db/api.php"
-EPISODE_DB_SECRET = "c65f3345d88f8da55c76fd7d7a032e39"
+_ENV_PATH = "/opt/harbouros/config/episodes.env"
+
+
+def _get_episode_db_secret():
+    """Load the episode DB secret from env var or config file."""
+    secret = os.environ.get("EPISODE_DB_SECRET")
+    if secret:
+        return secret
+    try:
+        with open(_ENV_PATH) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("EPISODE_DB_SECRET="):
+                    return line.split("=", 1)[1].strip()
+    except FileNotFoundError:
+        pass
+    return ""
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 LOCAL_DB_PATH = os.path.join(DATA_DIR, "episode-db.json")
 SCAN_RESULTS_PATH = os.path.join(DATA_DIR, "scan-results.json")
@@ -104,7 +124,7 @@ def update_episode_db():
         # Query the API for just these shows (~4MB instead of 167MB)
         ids_str = ",".join(str(i) for i in tmdb_ids)
         url = (
-            f"{EPISODE_DB_API}?key={EPISODE_DB_SECRET}"
+            f"{EPISODE_DB_API}?key={_get_episode_db_secret()}"
             f"&action=lookup&ids={ids_str}"
         )
         req = urllib.request.Request(
@@ -205,8 +225,8 @@ def _get_plex_tv_shows():
                         "tmdb_id": tmdb_id,
                         "library": section.get("title"),
                     })
-    except Exception:
-        pass
+    except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
+        log.warning("Failed to fetch Plex TV shows: %s", e)
 
     return shows
 
@@ -254,8 +274,8 @@ def _get_plex_episodes(rating_key):
                         "season": season_num,
                         "episode": ep.get("index", 0),
                     })
-    except Exception:
-        pass
+    except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
+        log.warning("Failed to fetch Plex episodes for %s: %s", rating_key, e)
 
     return episodes
 
@@ -298,6 +318,8 @@ def _match_show(plex_title, db, plex_year=None, plex_tmdb_id=None,
             show_year = _get_show_year(show)
             if show_year and str(show_year) == str(plex_year):
                 return show
+        # Year provided but no candidate matched — don't guess wrong
+        return None
 
     return candidates[0]
 
@@ -308,7 +330,7 @@ def _request_missing_shows(tmdb_ids):
         return
 
     try:
-        url = f"{EPISODE_DB_API}?key={EPISODE_DB_SECRET}&action=add-shows"
+        url = f"{EPISODE_DB_API}?key={_get_episode_db_secret()}&action=add-shows"
         body = json.dumps({"tmdb_ids": tmdb_ids}).encode("utf-8")
         req = urllib.request.Request(
             url,
@@ -317,7 +339,8 @@ def _request_missing_shows(tmdb_ids):
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
             return json.loads(resp.read().decode())
-    except Exception:
+    except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
+        log.warning("Failed to request missing shows: %s", e)
         return None
 
 

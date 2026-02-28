@@ -62,7 +62,7 @@ if [ ! -f "${MIGRATION_105}" ]; then
 
     # Install sudoers file
     if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
-        install -m 440 "${STAGING}/config/harbouros-sudoers" /etc/sudoers.d/harbouros
+        install -m 400 "${STAGING}/config/harbouros-sudoers" /etc/sudoers.d/harbouros
         echo "  Installed sudoers file."
     fi
 
@@ -75,7 +75,7 @@ fi
 if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
     if ! diff -q "${STAGING}/config/harbouros-sudoers" "/etc/sudoers.d/harbouros" >/dev/null 2>&1; then
         echo "  Updating sudoers file..."
-        install -m 440 "${STAGING}/config/harbouros-sudoers" /etc/sudoers.d/harbouros
+        install -m 400 "${STAGING}/config/harbouros-sudoers" /etc/sudoers.d/harbouros
     fi
 fi
 
