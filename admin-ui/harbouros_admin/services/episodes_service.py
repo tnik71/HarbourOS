@@ -12,23 +12,7 @@ from . import plex_service
 log = logging.getLogger(__name__)
 
 EPISODE_DB_API = "https://harbouros.eu/db/api.php"
-_ENV_PATH = "/opt/harbouros/config/episodes.env"
-
-
-def _get_episode_db_secret():
-    """Load the episode DB secret from env var or config file."""
-    secret = os.environ.get("EPISODE_DB_SECRET")
-    if secret:
-        return secret
-    try:
-        with open(_ENV_PATH) as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("EPISODE_DB_SECRET="):
-                    return line.split("=", 1)[1].strip()
-    except FileNotFoundError:
-        pass
-    return ""
+EPISODE_DB_SECRET = "c65f3345d88f8da55c76fd7d7a032e39"
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 LOCAL_DB_PATH = os.path.join(DATA_DIR, "episode-db.json")
 SCAN_RESULTS_PATH = os.path.join(DATA_DIR, "scan-results.json")
@@ -124,7 +108,7 @@ def update_episode_db():
         # Query the API for just these shows (~4MB instead of 167MB)
         ids_str = ",".join(str(i) for i in tmdb_ids)
         url = (
-            f"{EPISODE_DB_API}?key={_get_episode_db_secret()}"
+            f"{EPISODE_DB_API}?key={EPISODE_DB_SECRET}"
             f"&action=lookup&ids={ids_str}"
         )
         req = urllib.request.Request(
@@ -330,7 +314,7 @@ def _request_missing_shows(tmdb_ids):
         return
 
     try:
-        url = f"{EPISODE_DB_API}?key={_get_episode_db_secret()}&action=add-shows"
+        url = f"{EPISODE_DB_API}?key={EPISODE_DB_SECRET}&action=add-shows"
         body = json.dumps({"tmdb_ids": tmdb_ids}).encode("utf-8")
         req = urllib.request.Request(
             url,
