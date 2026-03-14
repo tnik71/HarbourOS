@@ -6,10 +6,13 @@ from collections import defaultdict
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+import io
+
+from flask import Flask, jsonify, redirect, render_template, request, send_file, session, url_for
 
 from .services import (
     auth_service,
+    backup_service,
     episodes_service,
     mount_manager,
     network_manager,
@@ -216,6 +219,31 @@ def create_app():
             return jsonify({"error": "Both 'current' and 'new' fields required"}), 400
         success, message = auth_service.change_password(current, new_pw)
         status_code = 200 if success else 400
+        return jsonify({"success": success, "message": message}), status_code
+
+    # --- API: Backup ---
+
+    @app.route("/api/backup")
+    @login_required
+    def api_backup_download():
+        data, filename = backup_service.create_backup()
+        return send_file(
+            io.BytesIO(data),
+            mimetype="application/gzip",
+            as_attachment=True,
+            download_name=filename,
+        )
+
+    @app.route("/api/backup/restore", methods=["POST"])
+    @login_required
+    def api_backup_restore():
+        file = request.files.get("backup")
+        if not file or not file.filename:
+            return jsonify({"error": "No backup file provided"}), 400
+        if not file.filename.endswith(".tar.gz"):
+            return jsonify({"error": "File must be a .tar.gz backup"}), 400
+        success, message = backup_service.restore_backup(file)
+        status_code = 200 if success else 500
         return jsonify({"success": success, "message": message}), status_code
 
     # --- API: Plex ---

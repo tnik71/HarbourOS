@@ -822,3 +822,72 @@ def test_api_episodes_auth_required(anon_client):
     assert resp.status_code == 401
     resp = anon_client.get("/api/episodes/shows")
     assert resp.status_code == 401
+
+
+# --- API: Backup ---
+
+def test_api_backup_download(client):
+    """Backup download returns a .tar.gz attachment."""
+    resp = client.get("/api/backup")
+    assert resp.status_code == 200
+    assert resp.content_type in ("application/gzip", "application/x-gzip")
+    cd = resp.headers.get("Content-Disposition", "")
+    assert "attachment" in cd
+    assert ".tar.gz" in cd
+
+
+def test_api_backup_download_auth_required(anon_client):
+    """Backup download requires authentication."""
+    resp = anon_client.get("/api/backup")
+    assert resp.status_code == 401
+
+
+def test_api_backup_restore_no_file(client):
+    """Restore without a file returns 400."""
+    resp = client.post("/api/backup/restore")
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert "error" in data
+
+
+def test_api_backup_restore_wrong_extension(client):
+    """Restore with a non-.tar.gz file returns 400."""
+    from io import BytesIO
+    resp = client.post(
+        "/api/backup/restore",
+        data={"backup": (BytesIO(b"not a tar"), "backup.zip")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert "error" in data
+
+
+def test_api_backup_restore_success(client):
+    """Restore with a valid .tar.gz returns success in dev mode."""
+    import io
+    import tarfile
+
+    # Build a minimal valid backup tar.gz in memory
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tf:
+        content = b'{"password_hash": "x", "password_changed": true, "secret_key": "x"}'
+        info = tarfile.TarInfo(name="etc/harbouros/admin.json")
+        info.size = len(content)
+        tf.addfile(info, io.BytesIO(content))
+    buf.seek(0)
+
+    resp = client.post(
+        "/api/backup/restore",
+        data={"backup": (buf, "harbouros-backup-test.tar.gz")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["success"] is True
+
+
+def test_api_backup_restore_auth_required(anon_client):
+    """Restore requires authentication."""
+    resp = anon_client.post("/api/backup/restore")
+    assert resp.status_code == 401

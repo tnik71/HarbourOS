@@ -352,6 +352,7 @@
                 <button class="tab-btn" onclick="showSystemTab('updates', this)">Updates</button>
                 <button class="tab-btn" onclick="showSystemTab('storage', this)">Storage</button>
                 <button class="tab-btn" onclick="showSystemTab('password', this)">Password</button>
+                <button class="tab-btn" onclick="showSystemTab('backup', this)">Backup</button>
             </div>
 
             <!-- Services Tab -->
@@ -437,6 +438,29 @@
                     </div>
                     <div id="password-msg" class="message" style="display:none"></div>
                 </form>
+            </div>
+
+            <!-- Backup Tab -->
+            <div class="system-tab-content" id="tab-backup" style="display:none">
+                <h2>Backup &amp; Restore</h2>
+                <div class="card" style="margin-bottom:1rem">
+                    <h3 style="margin:0 0 0.5rem">Config Backup</h3>
+                    <p class="text-muted text-sm" style="margin:0 0 1rem">Downloads a backup of your NAS mounts, network settings, Plex config, and admin password. Does not include your media files.</p>
+                    <button class="btn btn-primary btn-sm" onclick="downloadBackup()">Download Backup</button>
+                </div>
+                <div class="card">
+                    <h3 style="margin:0 0 0.5rem">Restore from Backup</h3>
+                    <p class="text-muted text-sm" style="margin:0 0 1rem">Upload a <code>.tar.gz</code> backup file to restore your config. The service will restart automatically.</p>
+                    <form onsubmit="restoreBackup(event)">
+                        <div class="form-group">
+                            <input type="file" id="backup-file" accept=".tar.gz" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-secondary btn-sm">Restore</button>
+                        </div>
+                        <div id="backup-msg" class="message" style="display:none"></div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
