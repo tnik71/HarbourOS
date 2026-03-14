@@ -41,4 +41,4 @@ else
 fi
 
 # Keep log file from growing forever (last 200 lines)
-tail -200 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+TMPLOG=$(mktemp "${LOG}.XXXXXX") && tail -200 "$LOG" > "$TMPLOG" && mv "$TMPLOG" "$LOG"
