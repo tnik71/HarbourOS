@@ -98,6 +98,11 @@
                         window.location.protocol + '//' + window.location.hostname + ':32400/web';
                 </script>
             </div>
+            <!-- Readiness Checklist -->
+            <div id="setup-checks" style="margin-top:1rem">
+                <h3 style="font-size:0.75rem;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Readiness Checklist</h3>
+                <div id="setup-checks-list"><span class="spinner"></span> Checking...</div>
+            </div>
             <div class="form-actions" style="margin-top:1.5rem">
                 <button class="btn btn-secondary" onclick="showStep(1)">Back</button>
                 <button class="btn btn-primary" onclick="completeSetup()">Finish Setup</button>
@@ -132,6 +137,28 @@
     function showStep(n) {
         document.querySelectorAll('.setup-step').forEach(function(s) { s.style.display = 'none'; });
         document.getElementById('step-' + n).style.display = 'block';
+        if (n === 2) loadSetupChecks();
+    }
+
+    async function loadSetupChecks() {
+        var el = document.getElementById('setup-checks-list');
+        if (!el) return;
+        el.innerHTML = '<span class="spinner"></span> Checking...';
+        var res = await api('/api/setup/checks');
+        if (!res) { el.innerHTML = '<p class="text-muted text-sm">Could not run checks.</p>'; return; }
+        function checkRow(label, ok, detail) {
+            return '<div class="service-item"><span class="status-dot ' + (ok ? 'dot-ok' : 'dot-warn') + '"></span>' +
+                '<span class="service-name">' + label + '</span>' +
+                (detail ? '<span class="service-status text-muted">' + esc(String(detail)) + '</span>' : '') +
+                '</div>';
+        }
+        var html = checkRow('Plex reachable', res.plex_reachable, res.plex_reachable ? 'OK' : 'Not responding \u2014 try restarting Plex');
+        html += checkRow('Static IP configured', res.static_ip, res.static_ip ? 'Yes' : 'Using DHCP \u2014 recommended to set a static IP in Network settings');
+        if (res.temperature_c !== null) {
+            html += checkRow('Temperature OK', res.temperature_ok, res.temperature_c + '\u00b0C' + (res.temperature_ok ? '' : ' \u2014 check cooling'));
+        }
+        html += checkRow('NAS storage connected', res.nas_count > 0, res.nas_count > 0 ? res.nas_count + ' mount(s)' : 'No mounts \u2014 go back and add your NAS');
+        el.innerHTML = html;
     }
 
     document.getElementById('setup-password-form').addEventListener('submit', async function(e) {

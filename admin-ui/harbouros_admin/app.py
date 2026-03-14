@@ -29,7 +29,7 @@ if os.environ.get("HARBOUROS_DEV"):
 _SETUP_ENDPOINTS = {
     "/", "/setup", "/login",
     "/api/auth/status", "/api/auth/logout",
-    "/api/system/password", "/api/setup/complete",
+    "/api/system/password", "/api/setup/complete", "/api/setup/checks",
 }
 
 _MAX_ATTEMPTS = 5
@@ -209,6 +209,12 @@ def create_app():
     def api_disk_details():
         return jsonify(system_info.get_disk_details())
 
+    @app.route("/api/system/security")
+    @login_required
+    def api_system_security():
+        count = sum(len(v) for v in _login_attempts.values())
+        return jsonify(system_info.get_security_status(failed_login_count=count))
+
     @app.route("/api/system/password", methods=["POST"])
     @login_required
     def api_change_password():
@@ -296,6 +302,11 @@ def create_app():
     @login_required
     def api_plex_libraries():
         return jsonify(plex_service.get_libraries())
+
+    @app.route("/api/plex/sessions")
+    @login_required
+    def api_plex_sessions():
+        return jsonify({"sessions": plex_service.get_sessions()})
 
     # --- API: HarbourOS Self-Update ---
 
@@ -421,6 +432,14 @@ def create_app():
         )
         return jsonify({"shares": shares})
 
+    @app.route("/api/mounts/<mount_id>/diagnose", methods=["POST"])
+    @login_required
+    def api_mount_diagnose(mount_id):
+        result = mount_manager.diagnose_mount(mount_id)
+        if result is None:
+            return jsonify({"error": "Mount not found"}), 404
+        return jsonify(result)
+
     # --- API: Network ---
 
     @app.route("/api/network")
@@ -487,6 +506,10 @@ def create_app():
         return jsonify(result)
 
     # --- API: Setup ---
+
+    @app.route("/api/setup/checks")
+    def api_setup_checks():
+        return jsonify(system_info.get_setup_checks())
 
     @app.route("/api/setup/complete", methods=["POST"])
     def api_setup_complete():

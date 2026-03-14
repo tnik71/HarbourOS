@@ -237,3 +237,69 @@ def get_libraries():
         recently_added = []
 
     return {"libraries": libraries, "recently_added": recently_added}
+
+
+def get_sessions():
+    """Return active Plex streaming sessions."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return [
+            {
+                "title": "Dune: Part Two",
+                "user": "Alice",
+                "device": "Apple TV",
+                "play_mode": "direct_play",
+                "bitrate_kbps": 20000,
+                "resolution": "1080p",
+                "video_decision": "copy",
+                "audio_decision": "copy",
+                "transcode_speed": None,
+                "throttled": False,
+            },
+            {
+                "title": "The Bear - S03E01",
+                "user": "Bob",
+                "device": "Chrome",
+                "play_mode": "transcoding",
+                "bitrate_kbps": 8000,
+                "resolution": "1080p",
+                "video_decision": "transcode",
+                "audio_decision": "transcode",
+                "transcode_speed": 1.8,
+                "throttled": False,
+            },
+        ]
+
+    token = get_plex_token()
+    if not token:
+        return []
+
+    headers = {"X-Plex-Token": token, "Accept": "application/json"}
+    sessions = []
+    try:
+        req = urllib.request.Request(PLEX_BASE_URL + "/status/sessions", headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            for item in data.get("MediaContainer", {}).get("Metadata", []):
+                transcode = item.get("TranscodeSession")
+                # Determine bitrate: prefer Session.bandwidth (in kbps), fallback to Media.bitrate
+                session_info = item.get("Session", {})
+                media_list = item.get("Media", [{}])
+                media = media_list[0] if media_list else {}
+                bitrate = session_info.get("bandwidth") or media.get("bitrate")
+
+                sessions.append({
+                    "title": item.get("title") or item.get("grandparentTitle", ""),
+                    "user": (item.get("User") or {}).get("title", "Unknown"),
+                    "device": (item.get("Player") or {}).get("title", "Unknown"),
+                    "play_mode": "transcoding" if transcode else "direct_play",
+                    "bitrate_kbps": bitrate,
+                    "resolution": media.get("videoResolution"),
+                    "video_decision": (transcode or {}).get("videoDecision"),
+                    "audio_decision": (transcode or {}).get("audioDecision"),
+                    "transcode_speed": (transcode or {}).get("speed"),
+                    "throttled": bool((transcode or {}).get("throttled")),
+                })
+    except Exception:
+        pass
+
+    return sessions
