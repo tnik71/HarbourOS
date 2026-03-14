@@ -879,6 +879,46 @@ async function changePassword(e) {
     }
 }
 
+/* === Backup Tab === */
+function downloadBackup() {
+    window.location.href = '/api/backup';
+}
+
+async function restoreBackup(e) {
+    e.preventDefault();
+    var fileInput = document.getElementById('backup-file');
+    var msg = document.getElementById('backup-msg');
+    if (!fileInput.files || !fileInput.files[0]) {
+        showMessage(msg, 'Please select a backup file', 'error');
+        return;
+    }
+    var formData = new FormData();
+    formData.append('backup', fileInput.files[0]);
+    showMessage(msg, 'Uploading and restoring \u2014 this may take a moment...', 'info');
+    try {
+        var r = await fetch('/api/backup/restore', { method: 'POST', body: formData });
+        if (r.status === 401) { window.location.href = '/login'; return; }
+        var res = await r.json();
+        if (!res.success) {
+            showMessage(msg, res.message || res.error || 'Restore failed', 'error');
+            return;
+        }
+    } catch (err) {
+        // Connection dropped — service is restarting after restore
+    }
+    showMessage(msg, 'Service is restarting \u2014 waiting for it to come back...', 'info');
+    for (var i = 0; i < 20; i++) {
+        await new Promise(function(r) { setTimeout(r, 3000); });
+        var status = await api('/api/system/status');
+        if (status) {
+            showMessage(msg, 'Backup restored successfully!', 'success');
+            fileInput.value = '';
+            return;
+        }
+    }
+    showMessage(msg, 'Service did not respond after restore. Try refreshing the page.', 'error');
+}
+
 /* === Episode Manager === */
 var _episodeShows = [];
 
