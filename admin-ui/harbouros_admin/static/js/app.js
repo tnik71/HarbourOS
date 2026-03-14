@@ -260,6 +260,7 @@ async function loadPlexModal() {
     loadPlexLogs();
     loadPlexUpdateLog();
     loadPlexLibraries();
+    loadPlexSessions();
 }
 
 async function plexAction(action) {
@@ -358,7 +359,11 @@ async function loadNasModal() {
         return;
     }
     el.innerHTML = res.mounts.map(function(m) {
-        return '<div class="mount-card"><div class="mount-header"><div>' +
+        var diagnoseBtn = m.status !== 'mounted'
+            ? '<button class="btn btn-sm btn-secondary" onclick="diagnoseMountClick(\'' + esc(m.id) + '\', this)">Diagnose</button>'
+            : '';
+        return '<div class="mount-card" id="mount-card-' + esc(m.id) + '">' +
+            '<div class="mount-header"><div>' +
             '<span class="status-dot ' + (m.status === 'mounted' ? 'dot-ok' : 'dot-warn') + '"></span> ' +
             '<strong>' + esc(m.name) + '</strong>' +
             '<span class="badge badge-' + m.type + '">' + m.type.toUpperCase() + '</span>' +
@@ -367,9 +372,12 @@ async function loadNasModal() {
             (m.status === 'mounted'
                 ? '<button class="btn btn-sm btn-secondary" onclick="unmountShare(\'' + esc(m.id) + '\')">Unmount</button>'
                 : '<button class="btn btn-sm btn-primary" onclick="mountShare(\'' + esc(m.id) + '\')">Mount</button>') +
+            diagnoseBtn +
             '<button class="btn btn-sm btn-danger" onclick="removeMount(\'' + esc(m.id) + '\')">Remove</button>' +
             '</div></div>' +
-            '<div class="text-muted text-sm" style="margin-top:0.3rem">' + esc(m.host) + ':' + esc(m.share) + ' \u2192 ' + esc(m.target) + '</div></div>';
+            '<div class="text-muted text-sm" style="margin-top:0.3rem">' + esc(m.host) + ':' + esc(m.share) + ' \u2192 ' + esc(m.target) + '</div>' +
+            '<div id="diag-' + esc(m.id) + '" style="display:none;margin-top:0.4rem"></div>' +
+            '</div>';
     }).join('');
 }
 
@@ -645,6 +653,7 @@ function showSystemTab(name, btn) {
     if (name === 'logs') loadSystemLogs();
     if (name === 'updates') { checkHarbourOSUpdate(); checkUpdates(); }
     if (name === 'storage') loadStorageDetails();
+    if (name === 'security') loadSecurityStatus();
 }
 
 /* === Services Tab === */
@@ -732,23 +741,29 @@ async function checkHarbourOSUpdate() {
     var dockVer = document.getElementById('dock-version');
     if (dockVer && res.current_version) dockVer.textContent = 'v' + res.current_version;
     var btn = document.getElementById('btn-harbouros-update');
+    var meta = '<div class="text-sm text-muted" style="margin-top:0.3rem">';
     if (res.update_available) {
         el.innerHTML = '<strong>Update available!</strong> ' +
             esc(res.current_version) + ' \u2192 ' + esc(res.new_version) +
-            '<div class="text-sm text-muted" style="margin-top:0.3rem">' +
-            'Current: ' + esc(res.current_sha) + ' \u2192 New: ' + esc(res.new_sha) + '</div>';
+            meta + 'Current: ' + esc(res.current_sha) + ' \u2192 New: ' + esc(res.new_sha) + '</div>';
         if (btn) btn.style.display = '';
     } else {
         el.innerHTML = 'HarbourOS is up to date.' +
-            '<div class="text-sm text-muted" style="margin-top:0.3rem">' +
+            meta +
             'Version ' + esc(res.current_version || 'unknown') +
             ' (' + esc(res.current_sha || 'unknown') + ')' +
-            (res.last_check ? ' \u2022 Last checked: ' + new Date(res.last_check).toLocaleString() : '') +
+            (res.last_check ? ' \u2022 Checked: ' + new Date(res.last_check).toLocaleString() : '') +
+            (res.last_update ? ' \u2022 Updated: ' + new Date(res.last_update).toLocaleString() : '') +
+            (res.previous_version ? ' \u2022 Previous: ' + esc(res.previous_version) : '') +
             '</div>';
         if (btn) btn.style.display = 'none';
     }
     if (res.last_error) {
         el.innerHTML += '<div class="text-sm" style="color:var(--error);margin-top:0.3rem">' + esc(res.last_error) + '</div>';
+    }
+    if (res.changelog) {
+        el.innerHTML += '<details style="margin-top:0.5rem"><summary class="text-sm text-muted" style="cursor:pointer">What changed</summary>' +
+            '<pre class="log-viewer" style="margin-top:0.3rem;max-height:120px">' + esc(res.changelog.replace(/\\n/g, '\n').trim()) + '</pre></details>';
     }
 }
 
@@ -836,7 +851,18 @@ async function loadStorageDetails() {
             html += '<div class="storage-sd" style="margin-top:0.75rem">' +
                 '<h3 style="font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;margin-bottom:0.3rem">SD Card</h3>' +
                 '<div class="text-sm">' + esc(disk.sd_card.model || 'Unknown') +
-                ' — ' + esc(disk.sd_card.size || 'N/A') + '</div></div>';
+                ' — ' + esc(disk.sd_card.size || 'N/A') + '</div>';
+            if (disk.sd_card.is_root) {
+                html += '<div class="message message-info" style="margin-top:0.4rem">SD card is your root disk. Consider moving Plex data to your NAS to reduce SD wear.</div>';
+            }
+            html += '</div>';
+        }
+        // Full disk warnings
+        var critical = disk.partitions.filter(function(p) { return p.warning === 'critical'; });
+        if (critical.length > 0) {
+            html = '<div class="message message-error" style="margin-bottom:0.75rem">' +
+                critical.map(function(p) { return esc(p.mountpoint) + ' is ' + p.percent + '% full'; }).join(', ') +
+                ' \u2014 free up space soon.</div>' + html;
         }
         diskEl.innerHTML = html;
     }
@@ -877,6 +903,98 @@ async function changePassword(e) {
             document.getElementById('pw-confirm').value = '';
         }
     }
+}
+
+/* === Security Tab === */
+async function loadSecurityStatus() {
+    var el = document.getElementById('security-status');
+    if (!el) return;
+    el.innerHTML = '<span class="spinner"></span>Loading...';
+    var res = await api('/api/system/security');
+    if (!res) { el.innerHTML = '<p class="text-muted text-sm">Could not load security status.</p>'; return; }
+
+    function row(label, ok, detail) {
+        return '<div class="service-item">' +
+            '<span class="status-dot ' + (ok ? 'dot-ok' : 'dot-error') + '"></span>' +
+            '<span class="service-name">' + label + '</span>' +
+            (detail ? '<span class="service-status text-muted">' + esc(String(detail)) + '</span>' : '') +
+            '</div>';
+    }
+
+    var html = row('Password changed from default', res.password_changed, res.password_changed ? 'Yes' : 'Still using default \u2014 change it now') +
+        row('fail2ban active', res.fail2ban_active, res.fail2ban_active ? 'Active' : 'Not running') +
+        row('Root SSH login disabled', res.root_login_disabled, res.root_login_disabled ? 'Disabled' : 'Enabled \u2014 consider disabling');
+    if (res.fail2ban_banned > 0) {
+        html += row('fail2ban banned IPs (SSH)', true, res.fail2ban_banned + ' currently banned');
+    } else {
+        html += row('fail2ban banned IPs (SSH)', true, 'None');
+    }
+    if (res.failed_logins_session > 0) {
+        html += row('Failed login attempts (this session)', false, res.failed_logins_session + ' attempts');
+    }
+    el.innerHTML = html;
+}
+
+/* === Plex Sessions === */
+async function loadPlexSessions() {
+    var el = document.getElementById('plex-sessions');
+    var msgEl = document.getElementById('plex-sessions-msg');
+    if (!el) return;
+    var res = await api('/api/plex/sessions');
+    if (!res) { el.innerHTML = '<p class="text-muted text-sm">Could not load sessions.</p>'; return; }
+    var sessions = res.sessions || [];
+    if (sessions.length === 0) {
+        el.innerHTML = '<p class="text-muted text-sm">No active streams.</p>';
+        if (msgEl) msgEl.style.display = 'none';
+        return;
+    }
+    el.innerHTML = sessions.map(function(s) {
+        var modeBadge = s.play_mode === 'transcoding'
+            ? '<span class="badge" style="background:rgba(251,191,36,0.15);color:var(--warning)">Transcoding</span>'
+            : '<span class="badge" style="background:rgba(37,99,235,0.12);color:var(--success)">Direct Play</span>';
+        var details = [];
+        if (s.resolution) details.push(esc(s.resolution));
+        if (s.bitrate_kbps) details.push(Math.round(s.bitrate_kbps / 1000) + ' Mbps');
+        if (s.transcode_speed) details.push('Speed: ' + s.transcode_speed + 'x');
+        if (s.throttled) details.push('Throttled');
+        return '<div class="plex-card" style="margin-bottom:0.5rem">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+            '<div><strong>' + esc(s.title) + '</strong> ' + modeBadge + '</div>' +
+            '</div>' +
+            '<div class="text-muted text-sm" style="margin-top:0.3rem">' +
+            esc(s.user) + ' \u2022 ' + esc(s.device) +
+            (details.length ? ' \u2022 ' + details.join(' \u2022 ') : '') +
+            '</div>' + '</div>';
+    }).join('');
+
+    var transcoding = sessions.filter(function(s) { return s.play_mode === 'transcoding'; });
+    if (msgEl && transcoding.length > 0) {
+        showMessage(msgEl,
+            transcoding.length + ' session' + (transcoding.length > 1 ? 's are' : ' is') +
+            ' transcoding \u2014 Pi 5 handles ~2 simultaneous 1080p transcodes.',
+            'info');
+    } else if (msgEl) {
+        msgEl.style.display = 'none';
+    }
+}
+
+/* === Mount Diagnostics === */
+async function diagnoseMountClick(mountId, btn) {
+    var diagEl = document.getElementById('diag-' + mountId);
+    if (!diagEl) return;
+    btn.disabled = true;
+    btn.textContent = 'Diagnosing...';
+    diagEl.style.display = 'block';
+    diagEl.innerHTML = '<span class="spinner"></span> Running diagnostics...';
+    var res = await api('/api/mounts/' + mountId + '/diagnose', 'POST');
+    btn.disabled = false;
+    btn.textContent = 'Diagnose';
+    if (!res) {
+        diagEl.innerHTML = '<span class="text-sm" style="color:var(--error)">Diagnostic failed.</span>';
+        return;
+    }
+    var color = res.share_accessible ? 'var(--success)' : 'var(--error)';
+    diagEl.innerHTML = '<span class="text-sm" style="color:' + color + '">' + esc(res.plain_english) + '</span>';
 }
 
 /* === Backup Tab === */

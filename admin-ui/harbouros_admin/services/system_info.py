@@ -1,11 +1,14 @@
 """System information service — CPU, RAM, temp, disk, uptime, logs, services, updates."""
 
 import json
+import logging
 import os
 import subprocess
 import time
 
 import psutil
+
+log = logging.getLogger(__name__)
 
 PLEX_UPDATE_LOG = "/var/log/harbouros-plex-update.log"
 HARBOUROS_UPDATE_STATUS = "/var/lib/harbouros/update-status.json"
@@ -263,6 +266,22 @@ def get_disk_details():
         except (json.JSONDecodeError, KeyError):
             pass
 
+    # Add disk health warnings
+    for p in partitions:
+        if p["percent"] >= 90:
+            p["warning"] = "critical"
+        elif p["percent"] >= 80:
+            p["warning"] = "warning"
+        else:
+            p["warning"] = None
+
+    # Flag SD card as root disk so the UI can warn about SD wear
+    if sd_info:
+        root_device = next(
+            (p["device"] for p in partitions if p["mountpoint"] == "/"), ""
+        )
+        sd_info["is_root"] = sd_info["name"] in root_device
+
     return {"partitions": partitions, "sd_card": sd_info}
 
 
@@ -347,3 +366,112 @@ def get_harbouros_update_log():
             return f.read().strip().split("\n")
     except FileNotFoundError:
         return ["No update log found."]
+
+
+def get_security_status(failed_login_count=0):
+    """Return the current security posture of the system."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return {
+            "password_changed": True,
+            "fail2ban_active": True,
+            "root_login_disabled": True,
+            "password_auth_enabled": True,
+            "fail2ban_banned": 0,
+            "failed_logins_session": failed_login_count,
+        }
+
+    from .auth_service import is_password_changed
+
+    # fail2ban active?
+    f2b_active = _run(["systemctl", "is-active", "fail2ban"]).stdout.strip() == "active"
+
+    # SSH: PermitRootLogin no
+    root_login_disabled = False
+    try:
+        with open("/etc/ssh/sshd_config") as f:
+            content = f.read()
+            root_login_disabled = "PermitRootLogin no" in content
+    except OSError:
+        pass
+
+    # SSH: PasswordAuthentication
+    pw_auth_enabled = True
+    try:
+        with open("/etc/ssh/sshd_config") as f:
+            for line in f:
+                stripped = line.strip()
+                if stripped.startswith("PasswordAuthentication"):
+                    pw_auth_enabled = "yes" in stripped.lower()
+                    break
+    except OSError:
+        pass
+
+    # fail2ban banned count (best-effort)
+    banned_count = 0
+    try:
+        result = subprocess.run(
+            _sudo(["fail2ban-client", "status", "sshd"]),
+            capture_output=True, text=True, timeout=5
+        )
+        for line in result.stdout.splitlines():
+            if "Currently banned" in line:
+                parts = line.split(":")
+                if len(parts) >= 2:
+                    banned_count = int(parts[-1].strip())
+                    break
+    except (subprocess.TimeoutExpired, OSError, ValueError):
+        pass
+
+    return {
+        "password_changed": is_password_changed(),
+        "fail2ban_active": f2b_active,
+        "root_login_disabled": root_login_disabled,
+        "password_auth_enabled": pw_auth_enabled,
+        "fail2ban_banned": banned_count,
+        "failed_logins_session": failed_login_count,
+    }
+
+
+def get_setup_checks():
+    """Return a set of readiness checks for the setup wizard."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return {
+            "plex_reachable": True,
+            "static_ip": False,
+            "temperature_ok": True,
+            "temperature_c": 52.0,
+            "nas_count": 1,
+        }
+
+    from . import mount_manager, network_manager
+
+    # Plex reachability
+    plex_reachable = False
+    try:
+        import urllib.request
+        urllib.request.urlopen("http://localhost:32400/identity", timeout=3)
+        plex_reachable = True
+    except Exception:
+        pass
+
+    # Static IP
+    static_ip = network_manager.get_ip_mode() == "static"
+
+    # Temperature
+    temp = get_temperature()
+    temp_ok = temp is None or temp < 70
+
+    # NAS mounts
+    try:
+        mounts = mount_manager.list_mounts()
+        nas_count = len(mounts)
+    except Exception:
+        nas_count = 0
+
+    return {
+        "plex_reachable": plex_reachable,
+        "static_ip": static_ip,
+        "temperature_ok": temp_ok,
+        "temperature_c": temp,
+        "nas_count": nas_count,
+    }

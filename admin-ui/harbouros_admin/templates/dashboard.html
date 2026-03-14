@@ -151,6 +151,13 @@
             <button class="modal-close" onclick="closeApp('plex')">&times;</button>
         </div>
         <div class="modal-body">
+            <!-- Active Sessions -->
+            <div id="plex-sessions-section" style="margin-bottom:1rem">
+                <h2>Active Sessions</h2>
+                <div id="plex-sessions"><span class="spinner"></span>Loading...</div>
+                <div id="plex-sessions-msg" class="message" style="display:none"></div>
+            </div>
+
             <div class="plex-grid">
                 <div class="plex-card">
                     <h3>Status</h3>
@@ -353,6 +360,7 @@
                 <button class="tab-btn" onclick="showSystemTab('storage', this)">Storage</button>
                 <button class="tab-btn" onclick="showSystemTab('password', this)">Password</button>
                 <button class="tab-btn" onclick="showSystemTab('backup', this)">Backup</button>
+                <button class="tab-btn" onclick="showSystemTab('security', this)">Security</button>
             </div>
 
             <!-- Services Tab -->
@@ -461,6 +469,12 @@
                         <div id="backup-msg" class="message" style="display:none"></div>
                     </form>
                 </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div class="system-tab-content" id="tab-security" style="display:none">
+                <h2>Security Status</h2>
+                <div id="security-status"><span class="spinner"></span>Loading...</div>
             </div>
         </div>
     </div>

@@ -539,3 +539,120 @@ def _discover_smb_shares(host, username=None, password=None):
         return shares
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return []
+
+
+def diagnose_mount(mount_id):
+    """Run diagnostics on an unmounted NAS mount and return plain-English result.
+
+    Returns a dict with reachability info, or None if the mount_id is not found.
+    """
+    mounts = list_mounts()
+    mount = next((m for m in mounts if m["id"] == mount_id), None)
+    if mount is None:
+        return None
+
+    if os.environ.get("HARBOUROS_DEV"):
+        return {
+            "reachable": True,
+            "port_open": True,
+            "share_accessible": False,
+            "last_error": "NT_STATUS_LOGON_FAILURE",
+            "plain_english": "Authentication failed \u2014 check your SMB username and password.",
+        }
+
+    host = mount["host"]
+    mount_type = mount["type"]
+
+    # Step 1: Ping
+    try:
+        r = subprocess.run(
+            ["ping", "-c", "1", "-W", "2", host],
+            capture_output=True, timeout=5
+        )
+        reachable = r.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        reachable = False
+
+    if not reachable:
+        return {
+            "reachable": False,
+            "port_open": False,
+            "share_accessible": False,
+            "last_error": "",
+            "plain_english": f"Host {host} is not reachable on the network. Check that the NAS is powered on and connected.",
+        }
+
+    # Step 2: Port check
+    port = 2049 if mount_type == "nfs" else 445
+    try:
+        r = subprocess.run(
+            ["nc", "-z", "-w", "2", host, str(port)],
+            capture_output=True, timeout=5
+        )
+        port_open = r.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        port_open = False
+
+    if not port_open:
+        proto = "NFS" if mount_type == "nfs" else "SMB"
+        return {
+            "reachable": True,
+            "port_open": False,
+            "share_accessible": False,
+            "last_error": f"Port {port} not responding",
+            "plain_english": f"{proto} port {port} is not open on {host}. Check firewall or {proto} service settings on the NAS.",
+        }
+
+    # Step 3: Share access test
+    share_accessible = False
+    last_error = ""
+    try:
+        if mount_type == "nfs":
+            r = subprocess.run(
+                _sudo(["showmount", "-e", host]),
+                capture_output=True, text=True, timeout=10
+            )
+            combined = r.stdout + r.stderr
+            last_error = combined.strip()
+            share_accessible = r.returncode == 0 and mount["share"] in combined
+        else:
+            r = subprocess.run(
+                _sudo(["smbclient", "-L", f"//{host}", "-N"]),
+                capture_output=True, text=True, timeout=10
+            )
+            combined = r.stdout + r.stderr
+            last_error = combined.strip()
+            share_accessible = r.returncode == 0
+    except (subprocess.TimeoutExpired, OSError) as e:
+        last_error = str(e)
+
+    # Step 4: Classify the error
+    plain_english = _classify_mount_error(last_error, mount_type)
+
+    return {
+        "reachable": True,
+        "port_open": True,
+        "share_accessible": share_accessible,
+        "last_error": last_error[:500],
+        "plain_english": plain_english,
+    }
+
+
+def _classify_mount_error(error_text, mount_type):
+    """Translate raw error output into a plain-English explanation."""
+    e = error_text.lower()
+    if not error_text:
+        return "Unknown error \u2014 check the system logs for details."
+    if "nt_status_logon_failure" in e or "logon failure" in e:
+        return "Authentication failed \u2014 check your SMB username and password."
+    if "nt_status_access_denied" in e or "access denied" in e:
+        return "Permission denied \u2014 the share exists but your credentials don't have access."
+    if "nt_status_bad_network_name" in e or "does not exist" in e:
+        return "Share not found \u2014 check the share path name."
+    if "connection refused" in e or "connection timed out" in e:
+        return "Connection refused \u2014 the NAS may be blocking access or the service is down."
+    if "no route to host" in e:
+        return "No route to host \u2014 check network connectivity between the Pi and the NAS."
+    if mount_type == "nfs" and "rpc" in e:
+        return "NFS RPC error \u2014 the NFS service on the NAS may not be running."
+    return f"Mount failed. Raw error: {error_text[:200]}"

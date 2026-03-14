@@ -891,3 +891,91 @@ def test_api_backup_restore_auth_required(anon_client):
     """Restore requires authentication."""
     resp = anon_client.post("/api/backup/restore")
     assert resp.status_code == 401
+
+
+# --- API: Security ---
+
+def test_api_system_security(client):
+    """Security status returns expected fields."""
+    resp = client.get("/api/system/security")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "password_changed" in data
+    assert "fail2ban_active" in data
+    assert "root_login_disabled" in data
+    assert "fail2ban_banned" in data
+    assert "failed_logins_session" in data
+
+
+def test_api_system_security_auth_required(anon_client):
+    """Security status requires authentication."""
+    resp = anon_client.get("/api/system/security")
+    assert resp.status_code == 401
+
+
+# --- API: Plex Sessions ---
+
+def test_api_plex_sessions(client):
+    """Sessions endpoint returns list."""
+    resp = client.get("/api/plex/sessions")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "sessions" in data
+    assert isinstance(data["sessions"], list)
+    if data["sessions"]:
+        s = data["sessions"][0]
+        assert "title" in s
+        assert "play_mode" in s
+
+
+def test_api_plex_sessions_auth_required(anon_client):
+    """Sessions endpoint requires authentication."""
+    resp = anon_client.get("/api/plex/sessions")
+    assert resp.status_code == 401
+
+
+# --- API: Setup Checks ---
+
+def test_api_setup_checks(client):
+    """Setup checks return readiness fields."""
+    resp = client.get("/api/setup/checks")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "plex_reachable" in data
+    assert "static_ip" in data
+    assert "temperature_ok" in data
+    assert "nas_count" in data
+
+
+def test_api_setup_checks_no_auth_required(anon_client):
+    """Setup checks are accessible without authentication."""
+    resp = anon_client.get("/api/setup/checks")
+    assert resp.status_code == 200
+
+
+# --- API: Mount Diagnose ---
+
+def test_api_mount_diagnose_not_found(client):
+    """Diagnosing a nonexistent mount returns 404."""
+    resp = client.post("/api/mounts/nonexistent/diagnose")
+    assert resp.status_code == 404
+
+
+def test_api_mount_diagnose_success(client):
+    """Diagnosing an existing mount returns diagnostic fields."""
+    import json as _json
+    # Create a mount first
+    resp = client.post(
+        "/api/mounts",
+        data=_json.dumps({"name": "DiagTest", "type": "nfs", "host": "192.168.1.50", "share": "/data"}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
+    mount_id = resp.get_json()["mount"]["id"]
+
+    resp = client.post(f"/api/mounts/{mount_id}/diagnose")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "reachable" in data
+    assert "plain_english" in data
+    assert "port_open" in data
