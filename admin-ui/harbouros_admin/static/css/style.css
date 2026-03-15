@@ -189,7 +189,7 @@ body {
     justify-content: center;
     gap: 0.75rem;
     width: 100%;
-    max-width: 650px;
+    max-width: 900px;
 }
 .widget {
     background: var(--glass-bg);
