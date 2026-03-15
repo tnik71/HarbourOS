@@ -157,6 +157,26 @@ async function updateWidgets() {
         }
     }
 
+    // Active sessions in Plex widget
+    var sessionsData = await api('/api/plex/sessions');
+    var wSessions = document.getElementById('w-plex-sessions');
+    if (wSessions) {
+        var sessions = (sessionsData && sessionsData.sessions) ? sessionsData.sessions : [];
+        if (sessions.length === 0) {
+            wSessions.innerHTML = '<div class="text-muted text-sm">No active streams</div>';
+        } else {
+            wSessions.innerHTML = sessions.map(function(s) {
+                var badge = s.play_mode === 'transcoding'
+                    ? '<span class="badge" style="background:rgba(251,191,36,0.15);color:var(--warning)">Transcoding</span>'
+                    : '<span class="badge" style="background:rgba(37,99,235,0.12);color:var(--success)">Direct</span>';
+                return '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.3rem 0;border-top:1px solid var(--border)">' +
+                    '<span class="text-sm" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.title) + '</span>' +
+                    '<span style="margin-left:0.5rem;flex-shrink:0">' + badge + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+    }
+
     if (mounts && mounts.mounts) {
         var mounted = mounts.mounts.filter(function(m) { return m.status === 'mounted'; }).length;
         var el = document.getElementById('w-mounts');

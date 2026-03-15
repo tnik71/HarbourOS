@@ -57,6 +57,11 @@ apt-get install -y -qq ${APT_OPTS} \
     fail2ban \
     logrotate
 
+# Remove Samba server — HarbourOS only needs the SMB client (cifs-utils + smbclient).
+# The server stack (smbd, winbindd, nmbd) uses ~150 MB RAM with no benefit.
+apt-get remove -y samba samba-ad-dc winbind libnss-winbind libpam-winbind 2>/dev/null || true
+apt-get autoremove -y 2>/dev/null || true
+
 # =============================================
 # Stage 1: Install Plex Media Server
 # =============================================
