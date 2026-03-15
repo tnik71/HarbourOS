@@ -245,6 +245,11 @@ def get_sessions():
         return [
             {
                 "title": "Dune: Part Two",
+                "show_title": "",
+                "episode_title": "Dune: Part Two",
+                "season": None,
+                "episode": None,
+                "media_type": "movie",
                 "user": "Alice",
                 "device": "Apple TV",
                 "play_mode": "direct_play",
@@ -256,7 +261,12 @@ def get_sessions():
                 "throttled": False,
             },
             {
-                "title": "The Bear - S03E01",
+                "title": "The Bear S03E01 - Tomorrow",
+                "show_title": "The Bear",
+                "episode_title": "Tomorrow",
+                "season": 3,
+                "episode": 1,
+                "media_type": "episode",
                 "user": "Bob",
                 "device": "Chrome",
                 "play_mode": "transcoding",
@@ -287,8 +297,28 @@ def get_sessions():
                 media = media_list[0] if media_list else {}
                 bitrate = session_info.get("bandwidth") or media.get("bitrate")
 
+                media_type = item.get("type", "")
+                episode_title = item.get("title", "")
+                show_title = item.get("grandparentTitle", "")
+                season_num = item.get("parentIndex")
+                episode_num = item.get("index")
+
+                # Build a human-readable label depending on content type
+                if media_type == "episode" and show_title:
+                    if season_num is not None and episode_num is not None:
+                        label = f"{show_title} S{int(season_num):02d}E{int(episode_num):02d} - {episode_title}"
+                    else:
+                        label = f"{show_title} - {episode_title}"
+                else:
+                    label = episode_title or show_title or "Unknown"
+
                 sessions.append({
-                    "title": item.get("title") or item.get("grandparentTitle", ""),
+                    "title": label,
+                    "show_title": show_title,
+                    "episode_title": episode_title,
+                    "season": season_num,
+                    "episode": episode_num,
+                    "media_type": media_type,
                     "user": (item.get("User") or {}).get("title", "Unknown"),
                     "device": (item.get("Player") or {}).get("title", "Unknown"),
                     "play_mode": "transcoding" if transcode else "direct_play",
