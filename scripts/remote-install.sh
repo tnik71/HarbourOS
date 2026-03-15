@@ -263,6 +263,11 @@ if [ "${PLEX_ALREADY_RUNNING}" -eq 0 ]; then
     systemctl start plexmediaserver.service
 fi
 
+# Allow harbouros service user to read the Plex token for session monitoring.
+# Plex sets Preferences.xml to 600 (owner-only); harbouros is in the plex group
+# so 640 is enough. The service unit also runs this on every start as a safety net.
+chmod 640 "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml" 2>/dev/null || true
+
 systemctl start harbouros.service
 
 sleep 2
