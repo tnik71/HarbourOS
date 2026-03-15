@@ -460,7 +460,11 @@
                     <p class="text-muted text-sm" style="margin:0 0 1rem">Upload a <code>.tar.gz</code> backup file to restore your config. The service will restart automatically.</p>
                     <form onsubmit="restoreBackup(event)">
                         <div class="form-group">
-                            <input type="file" id="backup-file" accept=".tar.gz" required>
+                            <input type="file" id="backup-file" accept=".tar.gz" required style="display:none" onchange="document.getElementById('backup-file-label').textContent=this.files[0]?this.files[0].name:'No file chosen'">
+                            <div style="display:flex;gap:0.5rem;align-items:center">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('backup-file').click()">Choose File</button>
+                                <span id="backup-file-label" class="text-muted text-sm">No file chosen</span>
+                            </div>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-secondary btn-sm">Restore</button>
