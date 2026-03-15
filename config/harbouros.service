@@ -8,6 +8,7 @@ Type=exec
 User=harbouros
 Group=harbouros
 WorkingDirectory=/opt/harbouros
+ExecStartPre=/bin/bash -c 'chmod 640 "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml" 2>/dev/null || true'
 ExecStart=/opt/harbouros/venv/bin/gunicorn \
     --bind 0.0.0.0:8080 \
     --workers 2 \
