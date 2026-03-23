@@ -137,24 +137,6 @@ async function updateWidgets() {
             if (ver.length > 12) ver = ver.substring(0, 12);
             versionEl.textContent = ver;
         }
-        var uptimeEl = document.getElementById('w-plex-uptime');
-        if (uptimeEl) {
-            if (plex.uptime && plex.running) {
-                var started = new Date(plex.uptime);
-                if (!isNaN(started.getTime())) {
-                    var diff = Math.floor((Date.now() - started.getTime()) / 1000);
-                    var days = Math.floor(diff / 86400);
-                    var hours = Math.floor((diff % 86400) / 3600);
-                    if (days > 0) uptimeEl.textContent = days + 'd ' + hours + 'h';
-                    else if (hours > 0) uptimeEl.textContent = hours + 'h';
-                    else uptimeEl.textContent = Math.floor(diff / 60) + 'm';
-                } else {
-                    uptimeEl.textContent = plex.uptime;
-                }
-            } else {
-                uptimeEl.textContent = 'N/A';
-            }
-        }
     }
 
     // Active sessions in Plex widget
@@ -205,8 +187,6 @@ async function updateWidgets() {
         }
         var wEl = document.getElementById('w-libraries');
         if (wEl) wEl.textContent = libsData.libraries.length;
-        var plexLibsEl = document.getElementById('w-plex-libs');
-        if (plexLibsEl) plexLibsEl.textContent = libsData.libraries.length;
     }
 
     // Update dock IP
@@ -1025,6 +1005,11 @@ function downloadBackup() {
     window.location.href = '/api/backup';
 }
 
+function backupFileChanged(input) {
+    var label = document.getElementById('backup-file-label');
+    if (label) label.textContent = input.files[0] ? input.files[0].name : 'No file chosen';
+}
+
 async function restoreBackup(e) {
     e.preventDefault();
     var fileInput = document.getElementById('backup-file');
@@ -1054,6 +1039,8 @@ async function restoreBackup(e) {
         if (status) {
             showMessage(msg, 'Backup restored successfully!', 'success');
             fileInput.value = '';
+            var label = document.getElementById('backup-file-label');
+            if (label) label.textContent = 'No file chosen';
             return;
         }
     }
