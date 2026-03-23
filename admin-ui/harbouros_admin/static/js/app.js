@@ -100,22 +100,24 @@ updateClock();
 setInterval(updateClock, 30000);
 
 /* === Widgets === */
+function updateSystemStats(sys) {
+    var el;
+    el = document.getElementById('w-cpu'); if (el) el.textContent = sys.cpu_percent + '%';
+    el = document.getElementById('w-ram'); if (el) el.textContent = sys.memory.percent + '%';
+    el = document.getElementById('w-temp');
+    if (el) el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
+    el = document.getElementById('w-uptime'); if (el) el.textContent = sys.uptime.formatted;
+    el = document.getElementById('w-disk');
+    if (el) el.textContent = sys.disk.used_gb + ' / ' + sys.disk.total_gb + ' GB';
+    el = document.getElementById('w-disk-pct'); if (el) el.textContent = sys.disk.percent + '%';
+}
+
 async function updateWidgets() {
     var sys = await api('/api/system/status');
     var plex = await api('/api/plex/status');
     var mounts = await api('/api/mounts');
 
-    if (sys) {
-        var el;
-        el = document.getElementById('w-cpu'); if (el) el.textContent = sys.cpu_percent + '%';
-        el = document.getElementById('w-ram'); if (el) el.textContent = sys.memory.percent + '%';
-        el = document.getElementById('w-temp');
-        if (el) el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
-        el = document.getElementById('w-uptime'); if (el) el.textContent = sys.uptime.formatted;
-        el = document.getElementById('w-disk');
-        if (el) el.textContent = sys.disk.used_gb + ' / ' + sys.disk.total_gb + ' GB';
-        el = document.getElementById('w-disk-pct'); if (el) el.textContent = sys.disk.percent + '%';
-    }
+    if (sys) updateSystemStats(sys);
 
     if (plex) {
         var dot = document.getElementById('dock-plex-dot');
@@ -232,14 +234,7 @@ if (window.location.pathname !== '/login') {
     // Also do a fast widget-only refresh every 8s (skip update check)
     setInterval(async function() {
         var sys = await api('/api/system/status');
-        if (sys) {
-            var el;
-            el = document.getElementById('w-cpu'); if (el) el.textContent = sys.cpu_percent + '%';
-            el = document.getElementById('w-ram'); if (el) el.textContent = sys.memory.percent + '%';
-            el = document.getElementById('w-temp');
-            if (el) el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
-            el = document.getElementById('w-uptime'); if (el) el.textContent = sys.uptime.formatted;
-        }
+        if (sys) updateSystemStats(sys);
     }, 8000);
 }
 

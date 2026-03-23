@@ -6,14 +6,9 @@ import subprocess
 import urllib.request
 import xml.etree.ElementTree as ET
 
+from .utils import _sudo
+
 SERVICE_NAME = "plexmediaserver"
-
-
-def _sudo(cmd):
-    """Prepend sudo to a command when running as non-root."""
-    if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
-        return ["sudo"] + cmd
-    return cmd
 
 
 PLEX_LOG_DIR = (
@@ -123,10 +118,7 @@ def get_logs(lines=50):
 
     log_file = os.path.join(PLEX_LOG_DIR, "Plex Media Server.log")
     try:
-        result = subprocess.run(
-            _sudo(["tail", "-n", str(lines), log_file]),
-            capture_output=True, text=True, timeout=10
-        )
+        result = _run(["tail", "-n", str(lines), log_file])
         if result.returncode == 0:
             return result.stdout.strip().split("\n")
     except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -139,10 +131,7 @@ def get_plex_token():
     if os.environ.get("HARBOUROS_DEV"):
         return "dev-mock-token"
     try:
-        result = subprocess.run(
-            _sudo(["cat", PLEX_PREFS_PATH]),
-            capture_output=True, text=True, timeout=5
-        )
+        result = _run(["cat", PLEX_PREFS_PATH])
         if result.returncode != 0:
             return None
         root = ET.fromstring(result.stdout)
