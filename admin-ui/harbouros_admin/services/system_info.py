@@ -204,16 +204,27 @@ def get_service_statuses():
     return statuses
 
 
+_update_cache = {"result": None, "ts": 0}
+_UPDATE_CACHE_TTL = 3600  # re-run apt at most once per hour
+
+
 def check_updates():
-    """Check for available apt package updates."""
+    """Check for available apt package updates (cached, 1h TTL)."""
+    now = time.time()
+    if _update_cache["result"] is not None and now - _update_cache["ts"] < _UPDATE_CACHE_TTL:
+        return _update_cache["result"]
     result = _run(["apt", "list", "--upgradable"], timeout=60)
     if result.returncode == 0:
         lines = [
             line for line in result.stdout.strip().split("\n")
             if "/" in line and "upgradable" in line.lower()
         ]
-        return {"available": len(lines), "packages": lines}
-    return {"available": 0, "packages": []}
+        data = {"available": len(lines), "packages": lines}
+    else:
+        data = {"available": 0, "packages": []}
+    _update_cache["result"] = data
+    _update_cache["ts"] = now
+    return data
 
 
 def run_update():

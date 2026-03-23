@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+import time
 import urllib.request
 import xml.etree.ElementTree as ET
 
@@ -50,8 +51,16 @@ def _mock_run(cmd):
     return MockResult(stdout="OK\n")
 
 
+_status_cache = {"result": None, "ts": 0}
+_STATUS_CACHE_TTL = 30  # seconds — matches the frontend poll interval
+
+
 def get_status():
-    """Get Plex service status."""
+    """Get Plex service status (cached, 30s TTL)."""
+    now = time.time()
+    if _status_cache["result"] is not None and now - _status_cache["ts"] < _STATUS_CACHE_TTL:
+        return _status_cache["result"]
+
     result = _run(["systemctl", "is-active", SERVICE_NAME])
     running = result.stdout.strip() == "active"
 
@@ -72,28 +81,39 @@ def get_status():
         if ts_result.returncode == 0:
             uptime = ts_result.stdout.strip().replace("ActiveEnterTimestamp=", "")
 
-    return {
+    status = {
         "running": running,
         "version": version,
         "uptime": uptime,
     }
+    _status_cache["result"] = status
+    _status_cache["ts"] = now
+    return status
+
+
+def _invalidate_status_cache():
+    _status_cache["result"] = None
+    _status_cache["ts"] = 0
 
 
 def start():
     """Start Plex Media Server."""
     result = _run(["systemctl", "start", SERVICE_NAME])
+    _invalidate_status_cache()
     return result.returncode == 0
 
 
 def stop():
     """Stop Plex Media Server."""
     result = _run(["systemctl", "stop", SERVICE_NAME])
+    _invalidate_status_cache()
     return result.returncode == 0
 
 
 def restart():
     """Restart Plex Media Server."""
     result = _run(["systemctl", "restart", SERVICE_NAME])
+    _invalidate_status_cache()
     return result.returncode == 0
 
 
@@ -126,16 +146,27 @@ def get_logs(lines=50):
     return []
 
 
+_token_cache = {"token": None, "ts": 0}
+_TOKEN_CACHE_TTL = 300  # 5 minutes — token only changes on Plex re-authentication
+
+
 def get_plex_token():
-    """Read the X-Plex-Token from Plex Preferences.xml."""
+    """Read the X-Plex-Token from Plex Preferences.xml (cached, 5min TTL)."""
     if os.environ.get("HARBOUROS_DEV"):
         return "dev-mock-token"
+    now = time.time()
+    if _token_cache["token"] and now - _token_cache["ts"] < _TOKEN_CACHE_TTL:
+        return _token_cache["token"]
     try:
         result = _run(["cat", PLEX_PREFS_PATH])
         if result.returncode != 0:
             return None
         root = ET.fromstring(result.stdout)
-        return root.get("PlexOnlineToken")
+        token = root.get("PlexOnlineToken")
+        if token:
+            _token_cache["token"] = token
+            _token_cache["ts"] = now
+        return token
     except (ET.ParseError, subprocess.TimeoutExpired):
         return None
 
