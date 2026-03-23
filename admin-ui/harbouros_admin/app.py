@@ -122,11 +122,6 @@ def create_app():
         _record_attempt(ip)
         return jsonify({"success": False, "error": "Invalid password"}), 401
 
-    @app.route("/api/auth/logout", methods=["POST"])
-    def logout():
-        session.clear()
-        return jsonify({"success": True})
-
     @app.route("/api/auth/status")
     def auth_status():
         return jsonify({
@@ -366,15 +361,6 @@ def create_app():
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         return jsonify({"mount": mount}), 201
-
-    @app.route("/api/mounts/<mount_id>", methods=["PUT"])
-    @login_required
-    def api_update_mount(mount_id):
-        data = request.get_json(silent=True) or {}
-        mount = mount_manager.update_mount(mount_id, **data)
-        if mount is None:
-            return jsonify({"error": "Mount not found"}), 404
-        return jsonify({"mount": mount})
 
     @app.route("/api/mounts/<mount_id>", methods=["DELETE"])
     @login_required

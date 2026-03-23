@@ -227,41 +227,6 @@ def test_api_mounts_delete_nonexistent(client):
     assert resp.status_code == 404
 
 
-def test_api_mounts_update(client):
-    """Updating an existing mount succeeds."""
-    # Create a mount first
-    resp = client.post(
-        "/api/mounts",
-        data=json.dumps({
-            "name": "UpdateMe",
-            "type": "nfs",
-            "host": "192.168.1.100",
-            "share": "/media/Movies",
-        }),
-        content_type="application/json",
-    )
-    mount_id = resp.get_json()["mount"]["id"]
-    # Update it
-    resp = client.put(
-        f"/api/mounts/{mount_id}",
-        data=json.dumps({"name": "Updated"}),
-        content_type="application/json",
-    )
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["mount"]["name"] == "Updated"
-
-
-def test_api_mounts_update_nonexistent(client):
-    """Updating a nonexistent mount returns 404."""
-    resp = client.put(
-        "/api/mounts/nonexistent",
-        data=json.dumps({"name": "Nope"}),
-        content_type="application/json",
-    )
-    assert resp.status_code == 404
-
-
 def test_api_mounts_mount_share(client):
     """Mounting a share succeeds in dev mode."""
     resp = client.post(
@@ -460,14 +425,6 @@ def test_auth_required_api(anon_client):
     """Unauthenticated API request returns 401."""
     resp = anon_client.get("/api/system/status")
     assert resp.status_code == 401
-
-
-def test_logout(client):
-    """Logout clears session."""
-    resp = client.post("/api/auth/logout")
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["success"] is True
 
 
 def test_auth_status(client):
