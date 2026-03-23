@@ -5,7 +5,7 @@ set -euo pipefail
 # Installs HarbourOS onto a running Raspberry Pi OS over SSH
 # Usage: Pushed and executed by install-remote.sh from the laptop
 
-STAGING="/tmp/harbouros-install"
+STAGING="${STAGING_DIR:-/tmp/harbouros-install}"
 
 echo "========================================="
 echo "  HarbourOS Remote Install"

@@ -26,7 +26,11 @@ if [ -z "$PI_USER" ]; then
     echo ""
     echo "Detecting SSH user..."
     for user in tnik71 pi harbouros admin; do
+        # Try key-based auth first (silent), then password auth (interactive)
         if ssh -o ConnectTimeout=5 -o BatchMode=yes "${user}@${PI_HOST}" "echo ok" >/dev/null 2>&1; then
+            PI_USER="$user"
+            break
+        elif ssh -o ConnectTimeout=5 -o BatchMode=no "${user}@${PI_HOST}" "echo ok" >/dev/null 2>&1; then
             PI_USER="$user"
             break
         fi
@@ -37,10 +41,10 @@ if [ -z "$PI_USER" ]; then
     echo "ERROR: Cannot connect via SSH. Tried users: tnik71, pi, harbouros, admin"
     echo "Make sure:"
     echo "  1. The Pi is on and reachable at ${PI_HOST}"
-    echo "  2. SSH is enabled"
-    echo "  3. You have SSH key access set up (run: ssh-copy-id <user>@${PI_HOST})"
+    echo "  2. SSH is enabled on the Pi"
+    echo "  3. You know the Pi user/password or have SSH key access"
     echo ""
-    echo "Or specify the user: PI_USER=myuser make install-remote PI=${PI_HOST}"
+    echo "Tip: specify the user directly: PI_USER=pi make install-remote PI=${PI_HOST}"
     exit 1
 fi
 
