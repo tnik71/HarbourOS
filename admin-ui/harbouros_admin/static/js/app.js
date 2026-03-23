@@ -34,11 +34,11 @@ function showMessage(el, text, type) {
 
 function libraryIcon(type) {
     var icons = {
-        movie: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>',
-        show: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>',
-        artist: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
-        photo: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
-        default: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+        movie: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f0c040" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/><line x1="17" y1="17" x2="22" y2="17"/></svg>',
+        show: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>',
+        artist: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+        photo: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+        default: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
     };
     return icons[type] || icons['default'];
 }
@@ -102,11 +102,20 @@ setInterval(updateClock, 30000);
 /* === Widgets === */
 function updateSystemStats(sys) {
     var el;
-    el = document.getElementById('w-cpu'); if (el) el.textContent = sys.cpu_percent + '%';
-    el = document.getElementById('w-ram'); if (el) el.textContent = sys.memory.percent + '%';
+    el = document.getElementById('w-cpu');
+    if (el) {
+        el.textContent = sys.cpu_percent + '%';
+        el.style.color = sys.cpu_percent >= 80 ? '#f87171' : sys.cpu_percent >= 40 ? '#eab308' : '#22c55e';
+    }
+    el = document.getElementById('w-ram');
+    if (el) { el.textContent = sys.memory.percent + '%'; el.style.color = '#60a5fa'; }
     el = document.getElementById('w-temp');
-    if (el) el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
-    el = document.getElementById('w-uptime'); if (el) el.textContent = sys.uptime.formatted;
+    if (el) {
+        el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
+        el.style.color = sys.temperature === null ? '' : sys.temperature >= 75 ? '#f87171' : sys.temperature >= 60 ? '#eab308' : '#22c55e';
+    }
+    el = document.getElementById('w-uptime');
+    if (el) { el.textContent = sys.uptime.formatted; el.style.color = '#a78bfa'; }
     el = document.getElementById('w-disk');
     if (el) el.textContent = sys.disk.used_gb + ' / ' + sys.disk.total_gb + ' GB';
     el = document.getElementById('w-disk-pct'); if (el) el.textContent = sys.disk.percent + '%';
