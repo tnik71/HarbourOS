@@ -85,11 +85,47 @@
     <div class="widgets">
         <div class="widget">
             <div class="widget-title">System</div>
-            <div class="widget-grid">
-                <div><div class="widget-stat-value" id="w-cpu">--</div><div class="widget-stat-label">CPU</div></div>
-                <div><div class="widget-stat-value" id="w-ram">--</div><div class="widget-stat-label">Memory</div></div>
-                <div><div class="widget-stat-value" id="w-temp">--</div><div class="widget-stat-label">Temp</div></div>
-                <div><div class="widget-stat-value" id="w-uptime">--</div><div class="widget-stat-label">Uptime</div></div>
+            <div class="widget-rings">
+                <div class="ring-gauge">
+                    <div class="ring-wrap">
+                        <svg viewBox="0 0 36 36" class="ring-svg">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9"/>
+                            <circle class="ring-fill" cx="18" cy="18" r="15.9" id="ring-cpu" stroke-dasharray="0 100"/>
+                        </svg>
+                        <div class="ring-value" id="w-cpu">--</div>
+                    </div>
+                    <div class="ring-label">CPU</div>
+                </div>
+                <div class="ring-gauge">
+                    <div class="ring-wrap">
+                        <svg viewBox="0 0 36 36" class="ring-svg">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9"/>
+                            <circle class="ring-fill" cx="18" cy="18" r="15.9" id="ring-ram" stroke-dasharray="0 100"/>
+                        </svg>
+                        <div class="ring-value" id="w-ram">--</div>
+                    </div>
+                    <div class="ring-label">Memory</div>
+                </div>
+                <div class="ring-gauge">
+                    <div class="ring-wrap">
+                        <svg viewBox="0 0 36 36" class="ring-svg">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9"/>
+                            <circle class="ring-fill" cx="18" cy="18" r="15.9" id="ring-temp" stroke-dasharray="0 100"/>
+                        </svg>
+                        <div class="ring-value" id="w-temp">--</div>
+                    </div>
+                    <div class="ring-label">Temp</div>
+                </div>
+                <div class="ring-gauge">
+                    <div class="ring-wrap">
+                        <svg viewBox="0 0 36 36" class="ring-svg">
+                            <circle class="ring-bg" cx="18" cy="18" r="15.9"/>
+                            <circle class="ring-fill ring-fill-full" cx="18" cy="18" r="15.9" stroke-dasharray="100 0"/>
+                        </svg>
+                        <div class="ring-value" id="w-uptime">--</div>
+                    </div>
+                    <div class="ring-label">Uptime</div>
+                </div>
             </div>
         </div>
         <div class="widget">

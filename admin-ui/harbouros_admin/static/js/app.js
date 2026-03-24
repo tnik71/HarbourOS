@@ -100,22 +100,28 @@ updateClock();
 setInterval(updateClock, 30000);
 
 /* === Widgets === */
+function setRing(id, pct) {
+    var el = document.getElementById(id);
+    if (el) el.setAttribute('stroke-dasharray', pct + ' ' + (100 - pct));
+}
+
 function updateSystemStats(sys) {
     var el;
     el = document.getElementById('w-cpu');
-    if (el) {
-        el.textContent = sys.cpu_percent + '%';
-        el.style.color = sys.cpu_percent >= 80 ? '#f87171' : sys.cpu_percent >= 40 ? '#eab308' : '#22c55e';
-    }
+    if (el) el.textContent = sys.cpu_percent + '%';
+    setRing('ring-cpu', sys.cpu_percent);
+
     el = document.getElementById('w-ram');
-    if (el) { el.textContent = sys.memory.percent + '%'; el.style.color = '#60a5fa'; }
+    if (el) el.textContent = sys.memory.percent + '%';
+    setRing('ring-ram', sys.memory.percent);
+
     el = document.getElementById('w-temp');
-    if (el) {
-        el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
-        el.style.color = sys.temperature === null ? '' : sys.temperature >= 75 ? '#f87171' : sys.temperature >= 60 ? '#eab308' : '#22c55e';
-    }
+    if (el) el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
+    if (sys.temperature !== null) setRing('ring-temp', Math.min(100, Math.round(sys.temperature / 85 * 100)));
+
     el = document.getElementById('w-uptime');
-    if (el) { el.textContent = sys.uptime.formatted; el.style.color = '#a78bfa'; }
+    if (el) el.textContent = sys.uptime.formatted;
+
     el = document.getElementById('w-disk');
     if (el) el.textContent = sys.disk.used_gb + ' / ' + sys.disk.total_gb + ' GB';
     el = document.getElementById('w-disk-pct'); if (el) el.textContent = sys.disk.percent + '%';
