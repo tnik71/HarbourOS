@@ -119,11 +119,6 @@ function updateSystemStats(sys) {
     if (el) el.textContent = sys.temperature !== null ? sys.temperature + '\u00B0C' : 'N/A';
     if (sys.temperature !== null) setRing('ring-temp', Math.min(100, Math.round(sys.temperature / 85 * 100)));
 
-    el = document.getElementById('w-uptime');
-    if (el) el.textContent = sys.uptime.formatted;
-
-    el = document.getElementById('w-disk');
-    if (el) el.textContent = sys.disk.used_gb + ' / ' + sys.disk.total_gb + ' GB';
     el = document.getElementById('w-disk-pct');
     if (el) el.textContent = sys.disk.percent + '%';
     setRing('ring-disk', sys.disk.percent);
@@ -185,8 +180,6 @@ async function updateWidgets() {
         var mounted = mounts.mounts.filter(function(m) { return m.status === 'mounted'; }).length;
         var el = document.getElementById('w-mounts');
         if (el) el.textContent = mounted + ' / ' + mounts.mounts.length;
-        setRing('ring-nas', mounts.mounts.length > 0
-            ? Math.round(mounted / mounts.mounts.length * 100) : 0);
     }
 
     // Libraries widget
@@ -208,7 +201,6 @@ async function updateWidgets() {
         }
         var wEl = document.getElementById('w-libraries');
         if (wEl) wEl.textContent = libsData.libraries.length;
-        setRing('ring-libs', Math.min(Math.round(libsData.libraries.length / 10 * 100), 100));
     }
 
     // Update dock IP
