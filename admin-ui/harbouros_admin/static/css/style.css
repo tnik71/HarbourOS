@@ -278,10 +278,10 @@ body {
     transition: stroke-dasharray 0.6s ease, stroke 0.4s ease;
 }
 /* Colour states applied by JS */
-.ring-fill.ring-ok    { stroke: #22c55e; }   /* green  — low/good  */
-.ring-fill.ring-warn  { stroke: #f59e0b; }   /* amber  — moderate  */
-.ring-fill.ring-hot   { stroke: #ef4444; }   /* red    — high/bad  */
-.ring-fill.ring-idle  { stroke: var(--accent); } /* blue — no data yet */
+.ring-fill.ring-ok    { stroke: #93c5fd; }   /* sky blue   — low    */
+.ring-fill.ring-warn  { stroke: #3b82f6; }   /* mid blue   — medium */
+.ring-fill.ring-hot   { stroke: #1e3a8a; }   /* deep blue  — high   */
+.ring-fill.ring-idle  { stroke: #60a5fa; }   /* blue — no data yet  */
 
 .ring-fill-full {
     stroke: rgba(99, 102, 241, 0.5);
