@@ -100,9 +100,29 @@ updateClock();
 setInterval(updateClock, 30000);
 
 /* === Widgets === */
+// colour thresholds: [warn%, hot%] — values below warn = green, below hot = amber, else red
+var RING_THRESHOLDS = {
+    'ring-cpu':  [60, 85],
+    'ring-ram':  [70, 88],
+    'ring-temp': [65, 85],   // these are percent-of-85°C scale
+    'ring-disk': [70, 90]
+};
+
 function setRing(id, pct) {
     var el = document.getElementById(id);
-    if (el) el.setAttribute('stroke-dasharray', pct + ' ' + (100 - pct));
+    if (!el) return;
+    el.setAttribute('stroke-dasharray', pct + ' ' + (100 - pct));
+    // colour coding
+    el.classList.remove('ring-ok', 'ring-warn', 'ring-hot', 'ring-idle');
+    var thresh = RING_THRESHOLDS[id];
+    if (thresh) {
+        if (pct < thresh[0])      el.classList.add('ring-ok');
+        else if (pct < thresh[1]) el.classList.add('ring-warn');
+        else                      el.classList.add('ring-hot');
+    }
+    // remove loading pulse from parent wrap
+    var wrap = el.closest('.ring-wrap');
+    if (wrap) wrap.classList.remove('ring-loading');
 }
 
 function updateSystemStats(sys) {
