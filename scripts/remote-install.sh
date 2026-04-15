@@ -201,6 +201,24 @@ if [ -f "${STAGING}/config/avahi/harbouros.service" ]; then
 fi
 systemctl enable avahi-daemon.service
 
+# Fix DNS resolution for *.plex.direct (required for Plex secure remote access).
+#
+# Plex uses <uuid>.plex.direct — a public domain that resolves to the server's
+# local IP — for TLS certificate validation. Two issues prevent this from working:
+#
+# 1. nsswitch.conf ships with "mdns4_minimal [NOTFOUND=return] dns", which stops
+#    all DNS lookups whenever mDNS can't resolve a name. Since .direct is not
+#    .local, mDNS always returns NOTFOUND and DNS is never tried.
+#
+# 2. Many routers don't forward plex.direct queries to Plex's nameserver
+#    (ns-plexdirect.plex.tv), so the router's DNS returns NXDOMAIN.
+#
+# Fix 1: Remove [NOTFOUND=return] so DNS is always tried after mDNS.
+# Fix 2: Prepend 8.8.8.8 via resolv.conf.head so it survives dhcpcd renewals.
+sed -i 's/mdns4_minimal \[NOTFOUND=return\]/mdns4_minimal/' /etc/nsswitch.conf
+echo "nameserver 8.8.8.8" > /etc/resolv.conf.head
+echo "  DNS configured for Plex remote access (plex.direct resolution)."
+
 # =============================================
 # Stage 5: Security hardening
 # =============================================

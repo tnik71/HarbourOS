@@ -182,11 +182,17 @@ def _write_smb_credentials(mount):
         f"domain={mount.get('domain', 'WORKGROUP')}\n"
     )
     if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
+        # Create the file with restricted permissions first, then write content.
+        # This avoids a window where the file exists world-readable between
+        # tee and chmod.
+        subprocess.run(
+            ["sudo", "install", "-m", "600", "/dev/null", creds_file],
+            capture_output=True, timeout=5
+        )
         subprocess.run(
             ["sudo", "tee", creds_file],
             input=content, capture_output=True, text=True, timeout=5
         )
-        subprocess.run(["sudo", "chmod", "600", creds_file], timeout=5)
     else:
         fd = os.open(creds_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as f:
@@ -517,7 +523,9 @@ def _discover_smb_shares(host, username=None, password=None):
     """Parse SMB shares from smbclient output."""
     try:
         if username and password:
-            cmd = _sudo(["smbclient", "-L", f"//{host}", "-U", f"{username}%{password}"])
+            # Pass credentials as separate arguments so special characters
+            # (including %) in the password don't corrupt the -U field.
+            cmd = _sudo(["smbclient", "-L", f"//{host}", "-U", username, "--password", password])
         else:
             cmd = _sudo(["smbclient", "-L", f"//{host}", "-N"])
         result = subprocess.run(
