@@ -106,13 +106,15 @@ def restore_backup(fileobj):
                 # Restore absolute path by prepending /
                 abs_path = "/" + member.name.lstrip("/")
 
-                # Safety: only allow paths we expect
+                # Safety: only allow paths we expect.
+                # Use exact match for files and prefix match (with trailing /)
+                # for directories to prevent /etc/dhcpcd.conf.evil-style bypasses.
                 allowed_prefixes = (
                     "/etc/harbouros/",
-                    "/etc/dhcpcd.conf",
                     "/var/lib/plexmediaserver/",
                 )
-                if not any(abs_path.startswith(p) for p in allowed_prefixes):
+                allowed_exact = {"/etc/dhcpcd.conf"}
+                if abs_path not in allowed_exact and not any(abs_path.startswith(p) for p in allowed_prefixes):
                     log.warning("Restore: skipping unexpected path %s", abs_path)
                     continue
 

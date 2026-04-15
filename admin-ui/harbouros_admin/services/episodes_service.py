@@ -22,24 +22,31 @@ _episode_db = None
 _scan_results = None
 
 
+_SCAN_RESULTS_LOADED = False
+
+
 def _load_scan_results():
     """Load scan results from disk into memory cache."""
-    global _scan_results
-    if _scan_results is not None:
+    global _scan_results, _SCAN_RESULTS_LOADED
+    if _SCAN_RESULTS_LOADED:
         return _scan_results
     try:
         with open(SCAN_RESULTS_PATH, "r") as f:
             _scan_results = json.load(f)
-        return _scan_results
     except (FileNotFoundError, json.JSONDecodeError):
-        return None
+        _scan_results = None
+    _SCAN_RESULTS_LOADED = True
+    return _scan_results
 
 
 def _save_scan_results(results):
-    """Save scan results to disk."""
+    """Save scan results to disk and update memory cache."""
+    global _scan_results, _SCAN_RESULTS_LOADED
     _ensure_data_dir()
     with open(SCAN_RESULTS_PATH, "w") as f:
         json.dump(results, f)
+    _scan_results = results
+    _SCAN_RESULTS_LOADED = True
 
 
 def _ensure_data_dir():
@@ -419,7 +426,7 @@ def scan_plex_library():
                 "not_aired": len(not_aired_eps),
             })
 
-        completion = round(total_local / total_db * 100) if total_db > 0 else 0
+        completion = min(100, round(total_local / total_db * 100)) if total_db > 0 else 0
 
         results.append({
             "plex_title": plex_show["title"],
@@ -443,7 +450,6 @@ def scan_plex_library():
         s["completion_pct"],  # Lower completion first
     ))
 
-    _scan_results = results
     _save_scan_results(results)
     matched = sum(1 for r in results if r["matched"])
     unmatched = len(results) - matched

@@ -13,4 +13,9 @@ cp /tmp/avahi-harbouros.service /etc/avahi/services/harbouros.service 2>/dev/nul
 # Enable Avahi
 systemctl enable avahi-daemon.service
 
+# Fix DNS resolution for *.plex.direct (required for Plex secure remote access).
+# See scripts/remote-install.sh networking stage for full explanation.
+sed -i 's/mdns4_minimal \[NOTFOUND=return\]/mdns4_minimal/' /etc/nsswitch.conf
+echo "nameserver 8.8.8.8" > /etc/resolv.conf.head
+
 echo "HarbourOS: Networking configured. Device will be accessible at harbouros.local"
