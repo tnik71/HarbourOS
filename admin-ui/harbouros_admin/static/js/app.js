@@ -263,11 +263,11 @@ if (window.location.pathname !== '/login') {
             if (el) el.textContent = 'v' + res.current_version;
         }
     })();
-    // Also do a fast widget-only refresh every 8s (skip update check)
+    // Also do a fast widget-only refresh every 3s (skip update check)
     setInterval(async function() {
         var sys = await api('/api/system/status');
         if (sys) updateSystemStats(sys);
-    }, 8000);
+    }, 3000);
 }
 
 /* === Plex Modal === */
