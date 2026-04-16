@@ -662,6 +662,8 @@ async function powerAction(action) {
 /* === System Modal === */
 function loadSystemModal() {
     loadServiceStatuses();
+    // Refresh system stats immediately so rings aren't stale when the modal opens
+    api('/api/system/status').then(function(sys) { if (sys) updateSystemStats(sys); });
 }
 
 function showSystemTab(name, btn) {
