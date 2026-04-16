@@ -34,6 +34,17 @@ NEW_VER=$(dpkg-query -W -f='${Version}' plexmediaserver 2>/dev/null || echo "unk
 
 if [ "$OLD_VER" != "$NEW_VER" ]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') Updated Plex: $OLD_VER -> $NEW_VER" >> "$LOG"
+
+    # Delete stale TLS certificate cache so Plex regenerates it on startup.
+    # Each Plex version bump may increment CertificateVersion in Preferences.xml.
+    # If the old cert-v*.p12 file is left behind, Plex's publish cycle stalls
+    # ("Last published value didn't change") and the server shows as offline
+    # to remote clients until the cert is regenerated. Deleting it here forces
+    # a clean cert fetch from plex.tv on the next start.
+    PLEX_SUPPORT_DIR="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server"
+    find "$PLEX_SUPPORT_DIR/Cache" -name 'cert-v*.p12' -delete 2>/dev/null && \
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Cleared stale Plex certificate cache." >> "$LOG"
+
     systemctl restart plexmediaserver
     echo "$(date '+%Y-%m-%d %H:%M:%S') Plex restarted." >> "$LOG"
 else
