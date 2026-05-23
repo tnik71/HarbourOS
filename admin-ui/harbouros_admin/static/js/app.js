@@ -58,6 +58,7 @@ function openApp(name) {
         if (name === 'network') loadNetworkModal();
         if (name === 'system') loadSystemModal();
         if (name === 'episodes') loadEpisodesModal();
+        if (name === 'flux') loadFluxModal();
     }
 }
 
@@ -144,6 +145,68 @@ function updateSystemStats(sys) {
     setRing('ring-disk', sys.disk.percent);
 }
 
+var _fluxWidgetTs = 0;
+async function updateFluxWidget() {
+    // Rate-limit to once per 60s — hits external API
+    if (Date.now() - _fluxWidgetTs < 60000) return;
+    _fluxWidgetTs = Date.now();
+
+    var d = await api('/api/flux/widget');
+    if (!d) return;
+
+    var dot = document.getElementById('w-flux-dot');
+    var grid = document.getElementById('w-flux-grid');
+    var syncEl = document.getElementById('w-flux-sync');
+    var syncBar = document.getElementById('w-flux-sync-bar');
+    var syncPct = document.getElementById('w-flux-sync-pct');
+    if (!grid) return;
+
+    if (dot) dot.className = 'status-dot ' + (d.running ? 'dot-ok' : 'dot-error');
+
+    var synced = d.sync_pct >= 99.9;
+    var nodeStatusText = d.node_status
+        ? d.node_status
+        : (synced ? 'Unregistered' : 'Syncing');
+    var nodeStatusColor = d.node_status === 'ENABLED' ? 'var(--success)'
+        : d.node_status === 'CONFIRMED' ? 'var(--warning)'
+        : 'var(--text-dim)';
+
+    // Fetch wallet data (cached 5 min on server, no extra rate-limit needed)
+    var w = await api('/api/flux/wallet');
+
+    var balanceText = (w && w.balance != null)
+        ? '<span style="color:var(--success)">' + parseFloat(w.balance).toFixed(2) + '</span>'
+        : '<span class="text-muted">—</span>';
+
+    var earnedText, earnedLabel;
+    if (w && w.earned_today != null && w.earned_today > 0) {
+        earnedText = '<span style="color:var(--success)">+' + w.earned_today.toFixed(6) + '</span>';
+        earnedLabel = 'Today (FLUX)';
+    } else if (d.est_daily_flux != null) {
+        earnedText = '<span style="color:var(--text-dim)">' + d.est_daily_flux.toFixed(2) + '</span>';
+        earnedLabel = 'Est. Daily';
+    } else {
+        earnedText = '<span class="text-muted">—</span>';
+        earnedLabel = 'Est. Daily';
+    }
+
+    grid.innerHTML =
+        '<div><div class="widget-stat-value" style="color:' + nodeStatusColor + ';font-size:0.85rem">' + nodeStatusText + '</div><div class="widget-stat-label">Node Status</div></div>' +
+        '<div><div class="widget-stat-value" style="font-size:0.85rem">' + balanceText + '</div><div class="widget-stat-label">Balance (FLUX)</div></div>' +
+        '<div><div class="widget-stat-value" style="font-size:0.85rem">' + earnedText + '</div><div class="widget-stat-label">' + earnedLabel + '</div></div>';
+
+    if (syncEl && syncBar && syncPct) {
+        if (!synced && d.sync_pct != null) {
+            syncEl.style.display = 'block';
+            var pct = d.sync_pct;
+            syncBar.style.width = pct + '%';
+            syncPct.textContent = pct.toFixed(1) + '%';
+        } else {
+            syncEl.style.display = 'none';
+        }
+    }
+}
+
 async function updateWidgets() {
     var sys = await api('/api/system/status');
     var plex = await api('/api/plex/status');
@@ -222,6 +285,9 @@ async function updateWidgets() {
         var wEl = document.getElementById('w-libraries');
         if (wEl) wEl.textContent = libsData.libraries.length;
     }
+
+    // Flux node widget
+    updateFluxWidget();
 
     // Update dock IP
     var net = await api('/api/network');
@@ -1381,4 +1447,252 @@ function formatEpisodeDate(dateStr) {
     var m = parseInt(parts[1], 10);
     var d = parseInt(parts[2], 10);
     return months[m - 1] + ' ' + d + ', ' + parts[0];
+}
+
+// =============================================================================
+// FLUX NODE
+// =============================================================================
+
+var _fluxStatusInterval = null;
+var _fluxInstallPollInterval = null;
+
+function showFluxTab(tab, btn) {
+    document.querySelectorAll('.flux-tab-content').forEach(function(el) {
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('#modal-flux .tab-btn').forEach(function(b) {
+        b.classList.remove('active');
+    });
+    var el = document.getElementById('flux-tab-' + tab);
+    if (el) el.style.display = 'block';
+    if (btn) btn.classList.add('active');
+
+    if (tab === 'status') loadFluxStatus();
+    if (tab === 'config') loadFluxConfig();
+    if (tab === 'docker') loadFluxDocker();
+    if (tab === 'benchmark') loadFluxBenchmark();
+    if (tab === 'logs') loadFluxLogs();
+    if (tab === 'install') loadFluxInstallLog();
+}
+
+async function loadFluxModal() {
+    // Start on the status tab
+    showFluxTab('status', document.querySelector('#modal-flux .tab-btn'));
+    // Start polling
+    if (_fluxStatusInterval) clearInterval(_fluxStatusInterval);
+    _fluxStatusInterval = setInterval(function() {
+        var modal = document.getElementById('modal-flux');
+        if (modal && modal.classList.contains('active')) {
+            loadFluxStatus();
+        } else {
+            clearInterval(_fluxStatusInterval);
+            _fluxStatusInterval = null;
+        }
+    }, 15000);
+}
+
+async function loadFluxStatus() {
+    var el = document.getElementById('flux-status-content');
+    if (!el) return;
+    var s = await api('/api/flux/status');
+    if (!s) { el.innerHTML = '<p class="text-muted">Could not load status.</p>'; return; }
+
+    var nodeStatusColor = s.node_status === 'ENABLED' ? 'var(--success)' : (s.node_status ? 'var(--warning)' : 'var(--text-dim)');
+    var networkHeight = s.network_height || 2588000;
+    var syncPct = s.block_height ? Math.min(100, (s.block_height / networkHeight * 100)).toFixed(1) : null;
+    var blockVal = s.block_height
+        ? s.block_height.toLocaleString() + (syncPct < 99.9 ? ' <span class="text-muted text-sm">(' + syncPct + '%)</span>' : '')
+        : '<span class="text-muted">—</span>';
+    var html = '<div class="plex-grid">';
+    html += _fluxStatCard('Daemon', s.running ? '<span style="color:var(--success)">Running</span>' : '<span style="color:var(--error)">Stopped</span>');
+    html += _fluxStatCard('Node Status', s.node_status ? ('<span style="color:' + nodeStatusColor + '">' + s.node_status + '</span>') : '<span class="text-muted">Pending registration</span>');
+    html += _fluxStatCard('Block Height', blockVal);
+    html += _fluxStatCard('FluxOS Version', s.version || '<span class="text-muted">—</span>');
+    html += _fluxStatCard('Docker', s.docker_running ? '<span style="color:var(--success)">Running</span>' : '<span style="color:var(--error)">Stopped</span>');
+    html += _fluxStatCard('App Containers', s.containers !== undefined ? s.containers : '—');
+    html += _fluxStatCard('API Port', s.api_port || '16127');
+    html += _fluxStatCard('Installed', s.installed ? '<span style="color:var(--success)">Yes</span>' : '<span style="color:var(--warning)">No</span>');
+    html += '</div>';
+    if (s.uptime) {
+        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">Daemon running since: ' + s.uptime + '</p>';
+    }
+
+    // Wallet section
+    var w = await api('/api/flux/wallet');
+    if (w && !w.error) {
+        html += '<h3 style="margin:1.25rem 0 0.5rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim)">Wallet</h3>';
+        html += '<div class="plex-grid">';
+        html += _fluxStatCard('Wallet Balance', w.balance != null ? '<span style="color:var(--success)">' + parseFloat(w.balance).toFixed(4) + ' FLUX</span>' : '<span class="text-muted">—</span>');
+        html += _fluxStatCard('Earned Today', w.earned_today != null ? '<span style="color:var(--success)">+' + w.earned_today.toFixed(6) + ' FLUX</span>' : '<span class="text-muted">Pending</span>');
+        html += _fluxStatCard('Total Earned', w.earned_total != null ? '<span style="color:var(--success)">+' + w.earned_total.toFixed(6) + ' FLUX</span>' : '<span class="text-muted">Pending</span>');
+        html += _fluxStatCard('Payouts', w.payout_count > 0 ? w.payout_count : '<span class="text-muted">None yet</span>');
+        html += '</div>';
+        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">Balance includes 1,000 FLUX locked as collateral.</p>';
+        if (w.last_payout) {
+            html += '<p class="text-muted text-sm" style="margin-top:0.25rem">Last payout: ' + w.last_payout + '</p>';
+        }
+    }
+
+    el.innerHTML = html;
+}
+
+function _fluxStatCard(label, value) {
+    return '<div class="plex-card"><h3>' + label + '</h3><div class="plex-stat-value">' + value + '</div></div>';
+}
+
+async function fluxAction(name) {
+    var msg = document.getElementById('flux-action-msg');
+    showMessage(msg, name.charAt(0).toUpperCase() + name.slice(1) + 'ing node...', 'info');
+    var res = await api('/api/flux/action', 'POST', { action: name });
+    if (res && res.success) {
+        showMessage(msg, 'Node ' + name + 'ed.', 'success');
+        setTimeout(loadFluxStatus, 1500);
+    } else {
+        showMessage(msg, (res && res.message) || ('Failed to ' + name + ' node'), 'error');
+    }
+}
+
+async function loadFluxConfig() {
+    var cfg = await api('/api/flux/config');
+    if (!cfg || cfg.error) return;
+    var set = function(id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; };
+    set('flux-collateral-txid', cfg.collateral_txid);
+    set('flux-collateral-index', cfg.collateral_index);
+    set('flux-zelid', cfg.zelid);
+    set('flux-pubkey', cfg.public_key);
+    set('flux-api-port', cfg.api_port || 16127);
+}
+
+async function saveFluxConfig(e) {
+    e.preventDefault();
+    var msg = document.getElementById('flux-config-msg');
+    var get = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    var data = {
+        collateral_txid: get('flux-collateral-txid'),
+        collateral_index: get('flux-collateral-index'),
+        zelid: get('flux-zelid'),
+        public_key: get('flux-pubkey'),
+        api_port: parseInt(get('flux-api-port'), 10) || 16127,
+    };
+    var res = await api('/api/flux/config', 'POST', data);
+    if (res && res.success) {
+        showMessage(msg, 'success', 'Config saved.');
+    } else {
+        showMessage(msg, 'error', (res && res.message) || 'Save failed');
+    }
+}
+
+async function loadFluxDocker() {
+    var el = document.getElementById('flux-docker-content');
+    if (!el) return;
+    var d = await api('/api/flux/docker');
+    if (!d || d.error) { el.innerHTML = '<p class="text-muted">Could not load Docker status.</p>'; return; }
+    if (!d.running) { el.innerHTML = '<p class="text-muted">Docker daemon is not running.</p>'; return; }
+    if (!d.containers || d.containers.length === 0) {
+        el.innerHTML = '<p class="text-muted">No app containers running. FluxOS deploys containers here once the node is confirmed on the network (requires collateral TX + ~100 block confirmations).</p>';
+        return;
+    }
+    var rows = d.containers.map(function(c) {
+        return '<tr><td style="font-family:monospace;font-size:0.8rem">' + (c.id || '').substring(0, 12) + '</td>'
+            + '<td>' + (c.image || '') + '</td>'
+            + '<td>' + (c.name || '') + '</td>'
+            + '<td style="color:var(--success)">' + (c.status || '') + '</td></tr>';
+    }).join('');
+    el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:0.3rem 0.5rem">ID</th>'
+        + '<th style="text-align:left;padding:0.3rem 0.5rem">Image</th>'
+        + '<th style="text-align:left;padding:0.3rem 0.5rem">Name</th>'
+        + '<th style="text-align:left;padding:0.3rem 0.5rem">Status</th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+async function loadFluxBenchmark() {
+    var el = document.getElementById('flux-benchmark-content');
+    if (!el) return;
+    el.innerHTML = '<p class="text-muted">Loading...</p>';
+    var b = await api('/api/flux/benchmark');
+    if (!b || b.error) {
+        el.innerHTML = '<p class="text-muted">Benchmark daemon not responding. Check that fluxbenchd is running.</p>';
+        return;
+    }
+    var statusColor = b.status === 'online' ? 'var(--success)' : 'var(--warning)';
+    var html = '<div class="plex-grid">';
+    html += _fluxStatCard('Benchmark Daemon', '<span style="color:' + statusColor + '">' + (b.status || 'unknown') + '</span>');
+    html += _fluxStatCard('Tier', b.tier || '<span class="text-muted">Pending registration</span>');
+    html += _fluxStatCard('CPU Cores', b.cores || '<span class="text-muted">—</span>');
+    html += _fluxStatCard('RAM', b.ram_gb ? parseFloat(b.ram_gb).toFixed(1) + ' GB' : '<span class="text-muted">—</span>');
+    html += _fluxStatCard('Disk Write', b.disk_write_mbps ? parseFloat(b.disk_write_mbps).toFixed(0) + ' MB/s' : '<span class="text-muted">—</span>');
+    html += _fluxStatCard('EPS Score', b.eps != null && b.eps > 0 ? b.eps : '<span class="text-muted">—</span>');
+    html += _fluxStatCard('Download', b.download_mbps ? parseFloat(b.download_mbps).toFixed(0) + ' Mbps' : '<span class="text-muted">—</span>');
+    html += _fluxStatCard('Upload', b.upload_mbps ? parseFloat(b.upload_mbps).toFixed(0) + ' Mbps' : '<span class="text-muted">—</span>');
+    html += '</div>';
+    if (b.details) {
+        var isRegistrationError = b.details.toLowerCase().includes('not a flux node') || b.details.toLowerCase().includes('tier response');
+        var detailMsg = isRegistrationError
+            ? 'Waiting for node registration — benchmark will complete once collateral TX is confirmed on-chain.'
+            : b.details;
+        html += '<p class="text-muted text-sm" style="margin-top:0.75rem">' + detailMsg + '</p>';
+    }
+    if (b.ran_at) html += '<p class="text-muted text-sm" style="margin-top:0.25rem">Last run: ' + b.ran_at + '</p>';
+    el.innerHTML = html;
+}
+
+async function loadFluxLogs() {
+    var el = document.getElementById('flux-logs');
+    if (!el) return;
+    el.textContent = 'Loading...';
+    var res = await api('/api/flux/logs');
+    if (res && res.logs) {
+        el.textContent = res.logs.join('\n') || '(no log output)';
+        el.scrollTop = el.scrollHeight;
+    } else {
+        el.textContent = '(no logs available)';
+    }
+}
+
+async function startFluxInstall() {
+    var btn = document.getElementById('btn-flux-install');
+    var msg = document.getElementById('flux-install-msg');
+    var log = document.getElementById('flux-install-log');
+    if (btn) btn.disabled = true;
+    showMessage(msg, 'info', 'Starting installation...');
+    log.style.display = 'block';
+    log.textContent = 'Waiting for install to begin...';
+
+    var res = await api('/api/flux/install', 'POST');
+    if (!res || !res.success) {
+        showMessage(msg, 'error', (res && res.message) || 'Failed to start install');
+        if (btn) btn.disabled = false;
+        return;
+    }
+    showMessage(msg, 'success', 'Install started. Follow progress below.');
+
+    // Poll install log every 2s
+    if (_fluxInstallPollInterval) clearInterval(_fluxInstallPollInterval);
+    _fluxInstallPollInterval = setInterval(async function() {
+        var statusRes = await api('/api/flux/install/status');
+        if (statusRes && statusRes.logs) {
+            log.textContent = statusRes.logs.join('\n');
+            log.scrollTop = log.scrollHeight;
+            // Stop polling if installation finished
+            var lastLine = statusRes.logs[statusRes.logs.length - 1] || '';
+            if (lastLine.toLowerCase().includes('complete') || lastLine.toLowerCase().includes('error') || lastLine.toLowerCase().includes('failed')) {
+                clearInterval(_fluxInstallPollInterval);
+                _fluxInstallPollInterval = null;
+                if (btn) btn.disabled = false;
+            }
+        }
+    }, 2000);
+}
+
+async function loadFluxInstallLog() {
+    var log = document.getElementById('flux-install-log');
+    if (!log) return;
+    var res = await api('/api/flux/install/status');
+    if (res && res.logs && res.logs.length > 0) {
+        log.style.display = 'block';
+        log.textContent = res.logs.join('\n');
+        log.scrollTop = log.scrollHeight;
+    }
 }
