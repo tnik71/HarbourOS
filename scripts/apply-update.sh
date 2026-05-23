@@ -95,14 +95,9 @@ if [ -f "${STAGING}/config/harbouros-flux-install.sh" ]; then
     fi
 fi
 
-# --- Flux P2SH compatibility patches ---
-if [ -f "${STAGING}/config/harbouros-flux-patch.sh" ]; then
-    install -m 755 "${STAGING}/config/harbouros-flux-patch.sh" /usr/local/bin/harbouros-flux-patch.sh
-    if [ -d "/opt/flux" ]; then
-        echo "  Applying FluxOS P2SH patches..."
-        bash /usr/local/bin/harbouros-flux-patch.sh
-    fi
-fi
+# NOTE: harbouros-flux-patch.sh has been removed. HarbourOS does not modify
+# FluxOS source code. The official deployment uses insightexplorer=1 in flux.conf
+# which routes around P2SH issues entirely. No source patching is required or permitted.
 
 # --- Admin UI code ---
 if [ -d "${STAGING}/harbouros_admin" ]; then
