@@ -575,12 +575,12 @@ def start_install():
     """Kick off the background install script. Returns (success, message)."""
     if os.environ.get("HARBOUROS_DEV"):
         return True, "Install started (dev mode)"
-    result = subprocess.Popen(
-        _sudo([
-            "bash", "/usr/local/bin/harbouros-flux-install.sh",
-            ">", FLUX_INSTALL_LOG, "2>&1",
-        ]),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    os.makedirs(os.path.dirname(FLUX_INSTALL_LOG), exist_ok=True)
+    with open(FLUX_INSTALL_LOG, "w") as log_fh:
+        result = subprocess.Popen(
+            _sudo(["/usr/local/bin/harbouros-flux-install.sh"]),
+            stdout=log_fh,
+            stderr=log_fh,
+            start_new_session=True,
+        )
     return True, f"Install started (pid {result.pid})"

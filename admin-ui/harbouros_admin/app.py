@@ -179,7 +179,7 @@ def create_app():
     @login_required
     def api_system_logs():
         service = request.args.get("service", "all")
-        lines = request.args.get("lines", 100, type=int)
+        lines = min(request.args.get("lines", 100, type=int), 500)
         logs = system_info.get_system_logs(service, lines)
         return jsonify({"logs": logs})
 

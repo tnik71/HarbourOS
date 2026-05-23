@@ -125,6 +125,9 @@ if [ -f "${STAGING}/requirements.txt" ]; then
 fi
 
 # --- Systemd units ---
+# NOTE: harbouros-flux.service (zelcash/fluxd) is intentionally excluded from
+# this loop. Updating the Flux daemon service definition can interrupt block
+# sync or cause node downtime. Deploy it manually when required.
 for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-self-update.service harbouros-self-update.timer harbouros-firstboot.service; do
     if [ -f "${STAGING}/config/${unit}" ]; then
         if ! diff -q "${STAGING}/config/${unit}" "/etc/systemd/system/${unit}" >/dev/null 2>&1; then
