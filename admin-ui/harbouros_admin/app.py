@@ -14,6 +14,7 @@ from .services import (
     auth_service,
     backup_service,
     episodes_service,
+    flux_service,
     mount_manager,
     network_manager,
     plex_service,
@@ -489,6 +490,80 @@ def create_app():
         result = episodes_service.get_missing_episodes(rating_key)
         if result is None:
             return jsonify({"error": "Show not found. Run a scan first."}), 404
+        return jsonify(result)
+
+    # --- API: Flux Node ---
+
+    @app.route("/api/flux/status")
+    @login_required
+    def api_flux_status():
+        return jsonify(flux_service.get_status())
+
+    @app.route("/api/flux/config")
+    @login_required
+    def api_flux_config_get():
+        return jsonify(flux_service.get_config())
+
+    @app.route("/api/flux/config", methods=["POST"])
+    @login_required
+    def api_flux_config_save():
+        data = request.get_json(silent=True) or {}
+        success, message = flux_service.save_config(data)
+        return jsonify({"success": success, "message": message}), (200 if success else 500)
+
+    @app.route("/api/flux/action", methods=["POST"])
+    @login_required
+    def api_flux_action():
+        data = request.get_json(silent=True) or {}
+        name = data.get("action")
+        if not name:
+            return jsonify({"error": "Missing 'action' field"}), 400
+        success, message = flux_service.action(name)
+        return jsonify({"success": success, "message": message}), (200 if success else 500)
+
+    @app.route("/api/flux/logs")
+    @login_required
+    def api_flux_logs():
+        lines = min(request.args.get("lines", 80, type=int), 500)
+        return jsonify({"logs": flux_service.get_logs(lines)})
+
+    @app.route("/api/flux/docker")
+    @login_required
+    def api_flux_docker():
+        return jsonify(flux_service.get_docker_status())
+
+    @app.route("/api/flux/benchmark")
+    @login_required
+    def api_flux_benchmark():
+        result = flux_service.get_benchmark_status()
+        if result is None:
+            return jsonify({"error": "No benchmark results yet"}), 404
+        return jsonify(result)
+
+    @app.route("/api/flux/install", methods=["POST"])
+    @login_required
+    def api_flux_install():
+        success, message = flux_service.start_install()
+        return jsonify({"success": success, "message": message}), (200 if success else 500)
+
+    @app.route("/api/flux/install/status")
+    @login_required
+    def api_flux_install_status():
+        return jsonify({"logs": flux_service.get_install_log()})
+
+    @app.route("/api/flux/widget")
+    @login_required
+    def api_flux_widget():
+        return jsonify(flux_service.get_widget_data())
+
+    @app.route("/api/flux/wallet")
+    @login_required
+    def api_flux_wallet():
+        result = flux_service.get_wallet_data()
+        if result is None:
+            return jsonify({"error": "No ZelID configured"}), 404
+        if result.get("balance") is None and result.get("earned_today") is None:
+            return jsonify({"error": "Could not fetch wallet data"}), 503
         return jsonify(result)
 
     # --- API: Setup ---

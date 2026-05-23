@@ -1,0 +1,13 @@
+# HarbourOS Flux Node — sudoers drop-in
+# Install to: /etc/sudoers.d/harbouros-flux
+# Grants the harbouros service user the specific commands needed to manage
+# the Flux node without requiring full root access.
+# This file supplements /etc/sudoers.d/harbouros (which grants general
+# systemctl start/stop/restart *).
+
+harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl -u zelcash *
+harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl -u zelcash.service *
+harbouros ALL=(root) NOPASSWD: /usr/bin/docker ps *
+harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-flux-install.sh
+harbouros ALL=(root) NOPASSWD: /usr/bin/tail -n * /var/log/harbouros-flux-install.log
+harbouros ALL=(root) NOPASSWD: /usr/local/bin/fluxbench-cli *
