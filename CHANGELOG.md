@@ -1,10 +1,33 @@
 # HarbourOS Changelog
 
-## v1.1.2 — Code Hygiene and Flux Install Reliability (2026-05-23)
+## v1.1.2 — Flux Integrity, Design System, and Reliability (2026-05-23)
+
+### Flux Integrity
+
+- **Upstream-only FluxOS**: HarbourOS no longer modifies FluxOS source code in any way. `harbouros-flux-patch.sh` and all associated deployment hooks have been removed.
+- **Removed P2SH patch system**: The `explorerService.js` null-check patch and `fluxNetworkHelper.js` IP fallback patch are gone. P2SH compatibility is handled by `insightexplorer=1` in `flux.conf` — no source modification required.
+- **Removed post-merge git hook**: The git hook that re-applied patches after every FluxOS `git pull` has been removed from `/opt/flux/.git/hooks/`.
+- **Removed patch deployment from updates**: `apply-update.sh` no longer installs or runs `harbouros-flux-patch.sh` on deploy.
+- **Verified clean working tree**: `git -C /opt/flux status` shows no modified tracked files. HEAD matches `origin/master` exactly (`aab617ab32`).
 
 ### Bug Fixes
 
+- **Flux node expiration**: Fixed node expiring because FluxOS auto-update ran as root, changing log file ownership to `root`. FluxOS (running as `tnik71`) could not write logs and crashed on every pm2 restart, leaving fluxbenchd unable to complete benchmark signing. Node fell out of CONFIRMED after confirm window expired.
+- **Flux benchmark recovery**: Identified and resolved fluxbenchd rejecting benchmarks with "FluxOs version Code not supported" — caused by the P2SH patch modifying `explorerService.js` and changing the directory MD5 fingerprint used by remote benchmark nodes to validate FluxOS integrity.
+- **Stale fluxbenchd process**: Fixed port 16224 bind failure after `systemctl restart` caused by a stale process still holding the socket. Resolved by killing the stale PID before restart.
 - **Flux install log streaming**: `start_install()` now redirects stdout/stderr to the install log via Python file handles instead of shell redirection tokens passed as positional arguments to `subprocess.Popen`. The install log was always empty before this fix.
+
+### UI — CSS Design System
+
+- **Design system tokens**: Added spacing scale (`--space-xs` through `--space-xl`), typography scale (`--text-xs` through `--text-2xl`), shadow tokens, and border-radius tokens to `:root`.
+- **Blue-only status language**: Semantic colour variables unified — running/confirmed/active states use HarbourOS blue (`--accent`). Error and warning states use neutral gray with border emphasis. No green, amber, or red fills anywhere in the UI.
+- **Hardcoded colours eliminated**: Ring gauge colours, episode card borders, progress bars, and show status badges all migrated to CSS variables.
+- **Flux modal widened**: Flux Node and System Management modals expanded to 800px (`modal-lg`) for better information density.
+- **Flux Status tab redesigned**: Status header with status dot + node label + tier, service health row (fluxd/FluxOS/mongod/benchd), progress bars for block sync and explorer sync, section-labelled stat grids. No coloured hero cards.
+- **Flux Benchmark tab**: Pass/fail shown as `.flux-bench-result` text badge. Hardware section labelled. No inline colour styles.
+- **Badge variants added**: `badge-confirmed`, `badge-running`, `badge-stopped`, `badge-expired`, `badge-offline`, `badge-installing`, `badge-syncing` — all with neutral backgrounds and blue or gray text only.
+- **Install tab**: Log viewer always visible (min-height 60px) with placeholder text when no install has run. Card wrappers replaced with `flux-section-label` dividers.
+- **Password warning banner**: Amber background replaced with blue-tinted glass consistent with design language.
 
 ### Security / Hygiene
 
@@ -14,8 +37,8 @@
 ### Documentation
 
 - **README**: Added Flux CUMULUS node support to Features, Architecture, and Project Structure sections. Added Flux Node section covering hardware recommendation, Insight Explorer mode, benchmark/wallet monitoring, and Flux + Plex coexistence.
-- **apply-update.sh**: Added comment explaining `harbouros-flux.service` is intentionally excluded from the auto-deploy loop — updating the Flux daemon service definition requires manual operator action.
-- **harbouros-flux-node-watcher.sh**: Documented as a local-only recovery/debug helper. Not tracked in the repo as it is operator-specific and not safe to auto-deploy.
+- **apply-update.sh**: Patch deployment step removed and replaced with a comment explaining that HarbourOS does not modify FluxOS source code.
+- **harbouros-flux-node-watcher.sh**: Removed from repo — documented as a local-only recovery helper that is operator-specific and not safe to auto-deploy.
 
 ---
 
