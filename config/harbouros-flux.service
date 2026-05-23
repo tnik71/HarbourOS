@@ -1,0 +1,22 @@
+[Unit]
+Description=HarbourOS Flux Node (fluxd)
+Documentation=https://runonflux.io
+After=network-online.target docker.service mongod.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/bin/fluxd \
+    -datadir=/var/lib/fluxd \
+    -conf=/var/lib/fluxd/flux.conf \
+    -daemon
+ExecStop=/usr/local/bin/flux-cli -datadir=/var/lib/fluxd stop
+Restart=on-failure
+RestartSec=30
+TimeoutStartSec=0
+TimeoutStopSec=120
+User=root
+WorkingDirectory=/var/lib/fluxd
+
+[Install]
+WantedBy=multi-user.target

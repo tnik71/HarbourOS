@@ -73,6 +73,12 @@
             </div>
             <span class="app-icon-label">Episodes</span>
         </div>
+        <div class="app-icon" onclick="openApp('flux')">
+            <div class="app-icon-img flux">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 19 7 19 17 12 22 5 17 5 7 12 2"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="17" x2="19" y2="17"/></svg>
+            </div>
+            <span class="app-icon-label">Flux Node</span>
+        </div>
         <a class="app-icon" id="plex-web-link" target="_blank" rel="noopener">
             <div class="app-icon-img settings">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -141,6 +147,26 @@
                 <div><div class="widget-stat-value" id="w-plex-version">--</div><div class="widget-stat-label">Version</div></div>
             </div>
             <div id="w-plex-sessions" style="margin-top:0.75rem"></div>
+        </div>
+        <div class="widget" id="w-flux-widget" onclick="openApp('flux')" style="cursor:pointer" title="Open Flux Node">
+            <div class="widget-title" style="display:flex;align-items:center;gap:0.4rem">
+                <span class="status-dot" id="w-flux-dot" style="flex-shrink:0"></span>
+                Flux Node
+            </div>
+            <div class="widget-grid" id="w-flux-grid">
+                <div><div class="widget-stat-value text-muted">--</div><div class="widget-stat-label">Node Status</div></div>
+                <div><div class="widget-stat-value text-muted">--</div><div class="widget-stat-label">Balance (FLUX)</div></div>
+                <div><div class="widget-stat-value text-muted">--</div><div class="widget-stat-label">Est. Daily</div></div>
+            </div>
+            <div id="w-flux-sync" style="margin-top:0.6rem;display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem">
+                    <span class="widget-stat-label">Blockchain sync</span>
+                    <span class="widget-stat-label" id="w-flux-sync-pct">0%</span>
+                </div>
+                <div style="height:3px;background:var(--glass-border);border-radius:2px;overflow:hidden">
+                    <div id="w-flux-sync-bar" style="height:100%;width:0%;background:rgba(34,197,94,0.6);border-radius:2px;transition:width 0.5s ease"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -558,6 +584,116 @@
             <!-- Detail View (hidden by default) -->
             <div id="episodes-detail-view" style="display:none">
                 <div id="episodes-detail-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FLUX NODE MODAL -->
+<div class="modal-backdrop" id="modal-flux">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Flux Node</h2>
+            <button class="modal-close" onclick="closeApp('flux')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Tab Navigation -->
+            <div class="system-tabs">
+                <button class="tab-btn active" onclick="showFluxTab('status', this)">Status</button>
+                <button class="tab-btn" onclick="showFluxTab('config', this)">Config</button>
+                <button class="tab-btn" onclick="showFluxTab('docker', this)">Containers</button>
+                <button class="tab-btn" onclick="showFluxTab('benchmark', this)">Benchmark</button>
+                <button class="tab-btn" onclick="showFluxTab('logs', this)">Logs</button>
+                <button class="tab-btn" onclick="showFluxTab('install', this)">Install</button>
+            </div>
+
+            <!-- Status Tab -->
+            <div class="flux-tab-content" id="flux-tab-status">
+                <div id="flux-status-content"><span class="spinner"></span>Loading...</div>
+                <div class="form-actions" style="margin-top:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="fluxAction('start')">Start</button>
+                    <button class="btn btn-secondary btn-sm" onclick="fluxAction('stop')">Stop</button>
+                    <button class="btn btn-secondary btn-sm" onclick="fluxAction('restart')">Restart</button>
+                </div>
+                <div id="flux-action-msg" class="message" style="display:none"></div>
+            </div>
+
+            <!-- Config Tab -->
+            <div class="flux-tab-content" id="flux-tab-config" style="display:none">
+                <h2>Node Configuration</h2>
+                <p class="text-muted text-sm" style="margin-bottom:1rem">Enter your Flux node credentials. These are set during the install wizard and should match your staked collateral.</p>
+                <form class="form" onsubmit="saveFluxConfig(event)">
+                    <div class="form-group">
+                        <label>Collateral TX ID</label>
+                        <input type="text" id="flux-collateral-txid" placeholder="e.g. a1b2c3d4e5f6..." spellcheck="false">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Collateral Index</label>
+                            <input type="text" id="flux-collateral-index" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label>API Port</label>
+                            <input type="number" id="flux-api-port" placeholder="16127" min="1024" max="65535">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>ZelID</label>
+                        <input type="text" id="flux-zelid" placeholder="Your ZelID / Zel address" spellcheck="false">
+                    </div>
+                    <div class="form-group">
+                        <label>Node Public Key</label>
+                        <input type="text" id="flux-pubkey" placeholder="Compressed public key (hex)" spellcheck="false">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">Save Config</button>
+                    </div>
+                    <div id="flux-config-msg" class="message" style="display:none"></div>
+                </form>
+            </div>
+
+            <!-- Containers Tab -->
+            <div class="flux-tab-content" id="flux-tab-docker" style="display:none">
+                <h2>Running Containers</h2>
+                <div id="flux-docker-content"><span class="spinner"></span>Loading...</div>
+            </div>
+
+            <!-- Benchmark Tab -->
+            <div class="flux-tab-content" id="flux-tab-benchmark" style="display:none">
+                <h2>Hardware Benchmark</h2>
+                <p class="text-muted text-sm" style="margin-bottom:1rem">Flux requires ≥ 8 GB RAM, ≥ 180 MB/s disk write speed, and ≥ 25 Mbps network to qualify for Cumulus tier.</p>
+                <div id="flux-benchmark-content"><span class="spinner"></span>Loading...</div>
+            </div>
+
+            <!-- Logs Tab -->
+            <div class="flux-tab-content" id="flux-tab-logs" style="display:none">
+                <h2>Node Logs</h2>
+                <div class="form-actions" style="margin-bottom:0.5rem">
+                    <button class="btn btn-secondary btn-sm" onclick="loadFluxLogs()">Refresh</button>
+                </div>
+                <pre class="log-viewer" id="flux-logs" style="max-height:380px">Loading...</pre>
+            </div>
+
+            <!-- Install Tab -->
+            <div class="flux-tab-content" id="flux-tab-install" style="display:none">
+                <h2>Install Flux Node</h2>
+                <div class="card" style="margin-bottom:1rem">
+                    <h3 style="margin:0 0 0.5rem">Requirements</h3>
+                    <ul class="text-sm text-muted" style="margin:0;padding-left:1.2rem;line-height:1.8">
+                        <li>Raspberry Pi 5 with 8 GB RAM</li>
+                        <li>External USB SSD &ge; 220 GB (&ge; 180 MB/s write speed)</li>
+                        <li>25 Mbps symmetric internet</li>
+                        <li>Ports 16124&ndash;16129 forwarded on your router</li>
+                        <li>1000 FLUX collateral staked on-chain</li>
+                    </ul>
+                </div>
+                <div class="card" style="margin-bottom:1rem">
+                    <h3 style="margin:0 0 0.5rem">Install FluxOS</h3>
+                    <p class="text-muted text-sm" style="margin:0 0 1rem">This will install Docker and the official FluxNode software. The process takes 5&ndash;10 minutes.</p>
+                    <button class="btn btn-primary btn-sm" onclick="startFluxInstall()" id="btn-flux-install">Start Installation</button>
+                </div>
+                <div id="flux-install-msg" class="message" style="display:none"></div>
+                <pre class="log-viewer" id="flux-install-log" style="display:none;margin-top:0.75rem;max-height:250px"></pre>
             </div>
         </div>
     </div>
