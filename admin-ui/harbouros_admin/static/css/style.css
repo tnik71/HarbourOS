@@ -8,7 +8,11 @@
     --glass-blur: 20px;
     --glass-radius: 16px;
     --glass-radius-sm: 12px;
+    --glass-radius-xs: 6px;
+    --glass-radius-pill: 20px;
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
 
     --text: #f0f0f0;
     --text-muted: #9ca3b4;
@@ -16,10 +20,50 @@
     --accent: #2563eb;
     --accent-hover: #1d4ed8;
     --accent-glow: rgba(37, 99, 235, 0.3);
-    --success: #2563eb;
-    --error: #f87171;
-    --warning: #fbbf24;
-    --info: #60a5fa;
+    /* Semantic states — blue for active/running, gray for neutral, no colour fills */
+    --success: var(--accent);          /* running / confirmed / active = blue */
+    --success-bg: rgba(37, 99, 235, 0.10);
+    --error: var(--text-muted);        /* error state = brighter border + icon, not red fill */
+    --error-bg: rgba(255, 255, 255, 0.05);
+    --warning: var(--text-muted);      /* warning = blue outline + icon, not amber fill */
+    --warning-bg: rgba(255, 255, 255, 0.05);
+    --info: var(--accent);
+    --info-bg: rgba(37, 99, 235, 0.08);
+    /* Error/warning emphasis via border only */
+    --error-border: rgba(148, 163, 184, 0.40);
+    --warning-border: var(--accent);
+
+    /* Ring gauge colour tokens — blue gradient only */
+    --ring-ok:   #93c5fd;
+    --ring-warn: #3b82f6;
+    --ring-hot:  #1e3a8a;
+    --ring-idle: #60a5fa;
+
+    /* Episode / completion colour tokens — blue + gray only */
+    --ep-complete: var(--accent);
+    --ep-complete-hover: #3b82f6;
+    --ep-high: #3b82f6;
+    --ep-high-hover: #60a5fa;
+    --ep-mid: var(--text-muted);
+    --ep-mid-hover: var(--text);
+    --ep-low: rgba(148, 163, 184, 0.5);
+    --ep-low-hover: var(--text-muted);
+
+    /* Spacing scale */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+
+    /* Typography scale */
+    --text-xs:   0.72rem;
+    --text-sm:   0.8rem;
+    --text-base: 0.9rem;
+    --text-md:   1rem;
+    --text-lg:   1.1rem;
+    --text-xl:   1.25rem;
+    --text-2xl:  1.5rem;
 
     --dock-height: 44px;
     --topbar-height: 38px;
@@ -44,9 +88,9 @@ body {
     top: var(--topbar-height);
     left: 0;
     right: 0;
-    background: rgba(251, 191, 36, 0.15);
-    border-bottom: 1px solid rgba(251, 191, 36, 0.3);
-    color: var(--warning);
+    background: rgba(37, 99, 235, 0.08);
+    border-bottom: 1px solid rgba(37, 99, 235, 0.25);
+    color: var(--text-muted);
     padding: 0.5rem 1.25rem;
     font-size: 0.8rem;
     display: flex;
@@ -57,7 +101,7 @@ body {
     -webkit-backdrop-filter: blur(20px);
 }
 .password-warning-banner a {
-    color: #fbbf24;
+    color: var(--accent);
     font-weight: 600;
     text-decoration: underline;
 }
@@ -96,7 +140,7 @@ body {
     color: #e0e0e0;
 }
 .topbar-brand-os {
-    color: #2563eb;
+    color: var(--accent);
 }
 .topbar-right {
     display: flex;
@@ -274,10 +318,10 @@ body {
     transition: stroke-dasharray 0.6s ease, stroke 0.4s ease;
 }
 /* Colour states applied by JS */
-.ring-fill.ring-ok    { stroke: #93c5fd; }   /* sky blue   — low    */
-.ring-fill.ring-warn  { stroke: #3b82f6; }   /* mid blue   — medium */
-.ring-fill.ring-hot   { stroke: #1e3a8a; }   /* deep blue  — high   */
-.ring-fill.ring-idle  { stroke: #60a5fa; }   /* blue — no data yet  */
+.ring-fill.ring-ok    { stroke: var(--ring-ok); }   /* sky blue   — low    */
+.ring-fill.ring-warn  { stroke: var(--ring-warn); }  /* mid blue   — medium */
+.ring-fill.ring-hot   { stroke: var(--ring-hot); }   /* deep blue  — high   */
+.ring-fill.ring-idle  { stroke: var(--ring-idle); }  /* blue — no data yet  */
 
 .ring-fill-full {
     stroke: rgba(99, 102, 241, 0.5);
@@ -533,23 +577,34 @@ body {
     align-items: center;
     gap: 0.4rem;
     padding: 0.3rem 0.65rem;
-    border-radius: 20px;
-    font-size: 0.78rem;
+    border-radius: var(--glass-radius-pill);
+    font-size: var(--text-sm);
     font-weight: 600;
 }
-.status-ok { background: rgba(37, 99, 235, 0.12); color: var(--success); }
-.status-error { background: rgba(248, 113, 113, 0.12); color: var(--error); }
+.status-ok    { background: var(--success-bg);  color: var(--accent); }
+.status-error { background: var(--error-bg);    color: var(--text-muted); border: 1px solid var(--error-border); }
+.status-warn  { background: var(--warning-bg);  color: var(--text-muted); border: 1px solid var(--warning-border); }
+
+/* Node/service status badge variants — blue for active, gray for inactive */
+.badge-running    { background: var(--success-bg); color: var(--accent); }
+.badge-stopped    { background: rgba(255,255,255,0.04); color: var(--text-dim); }
+.badge-confirmed  { background: var(--success-bg); color: var(--accent); }
+.badge-expired    { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--error-border); }
+.badge-syncing    { background: var(--info-bg);    color: var(--accent); }
+.badge-offline    { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--error-border); }
+.badge-installing { background: var(--info-bg);    color: var(--accent); }
+
 .badge {
     display: inline-block;
     padding: 0.1rem 0.4rem;
-    border-radius: 6px;
+    border-radius: var(--glass-radius-xs);
     font-size: 0.62rem;
     font-weight: 600;
     text-transform: uppercase;
     margin-left: 0.4rem;
 }
-.badge-nfs { background: rgba(96, 165, 250, 0.15); color: var(--info); }
-.badge-smb { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+.badge-nfs { background: var(--info-bg);    color: var(--info); }
+.badge-smb { background: var(--warning-bg); color: var(--warning); }
 
 /* === MESSAGES === */
 .message {
@@ -614,6 +669,125 @@ body {
     color: var(--text-dim);
     margin-bottom: 0.5rem;
 }
+
+/* === FLUX STATUS LAYOUT === */
+/* Status header: small dot + node status inline — no coloured hero card */
+.flux-status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.flux-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-dim);
+}
+.flux-status-dot.dot-active {
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(37, 99, 235, 0.5);
+}
+.flux-status-dot.dot-inactive {
+    background: rgba(148, 163, 184, 0.3);
+}
+.flux-status-node {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+.flux-status-tier {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+/* Section label inside Flux modal — small caps, muted */
+.flux-section-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-dim);
+    margin: 1.1rem 0 0.5rem;
+}
+.flux-section-label:first-child { margin-top: 0; }
+
+/* Progress row for confirm window / explorer sync */
+.flux-progress-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+@media (max-width: 600px) {
+    .flux-progress-row { grid-template-columns: 1fr; }
+}
+.flux-progress-item {}
+.flux-progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+.flux-progress-label span:last-child {
+    font-family: 'Fira Code', monospace;
+    font-size: var(--text-xs);
+    color: var(--text);
+}
+.flux-progress-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.flux-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* Service health dots row */
+.flux-services-row {
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.flux-service-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+.flux-service-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.3);
+    flex-shrink: 0;
+}
+.flux-service-dot.dot-up   { background: var(--accent); }
+.flux-service-dot.dot-down { background: rgba(148, 163, 184, 0.3); }
+
+/* Benchmark pass/fail indicator — text only, no colour fill */
+.flux-bench-result {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+}
+.flux-bench-result.bench-pass { color: var(--accent); }
+.flux-bench-result.bench-fail { color: var(--text-muted); }
 
 /* === PLEX LIBRARIES === */
 .library-grid {
@@ -894,8 +1068,7 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     transition: width 0.3s ease;
 }
 
-/* === STATUS WARN === */
-.status-warn { background: rgba(251, 191, 36, 0.12); color: var(--warning); }
+/* .status-warn defined in STATUS & BADGES section above */
 
 /* === LOGIN PAGE === */
 .login-container {
@@ -949,6 +1122,63 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
 .modal-wide {
     max-width: 900px !important;
     width: 95vw !important;
+}
+
+/* Larger modal for Flux Node and System Management */
+.modal-lg {
+    max-width: 800px !important;
+    width: 95vw !important;
+}
+
+/* Within-modal section divider — neutral, no colour */
+.panel-section {
+    padding: var(--space-md) 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.panel-section:first-child {
+    padding-top: 0;
+    border-top: none;
+}
+.panel-section-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: var(--space-sm);
+}
+
+/* Horizontal stat row for metric pairs */
+.stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: var(--space-sm);
+    margin: var(--space-sm) 0;
+}
+.stat-row-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--glass-radius-sm);
+    padding: var(--space-sm) var(--space-md);
+}
+.stat-row-label {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: 0.15rem;
+}
+.stat-row-value {
+    font-size: var(--text-md);
+    font-weight: 600;
+    font-family: 'Fira Code', monospace;
+}
+
+/* Pulsing dot for installing/syncing states */
+@keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+.badge-installing .status-dot {
+    animation: badge-pulse 1.2s ease-in-out infinite;
 }
 
 .episodes-header-left {
@@ -1052,16 +1282,16 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
 }
 
 /* Color-coded left borders based on completion */
-.episode-card-border-green  { border-left-color: #22c55e; }
-.episode-card-border-blue   { border-left-color: #2563eb; }
-.episode-card-border-orange { border-left-color: #f59e0b; }
-.episode-card-border-red    { border-left-color: #ef4444; }
+.episode-card-border-green  { border-left-color: var(--ep-complete); }
+.episode-card-border-blue   { border-left-color: var(--ep-high); }
+.episode-card-border-orange { border-left-color: var(--ep-mid); }
+.episode-card-border-red    { border-left-color: var(--ep-low); }
 .episode-card-border-gray   { border-left-color: rgba(107, 114, 128, 0.4); }
 
-.episode-card:hover.episode-card-border-green  { border-left-color: #4ade80; }
-.episode-card:hover.episode-card-border-blue   { border-left-color: #3b82f6; }
-.episode-card:hover.episode-card-border-orange { border-left-color: #fbbf24; }
-.episode-card:hover.episode-card-border-red    { border-left-color: #f87171; }
+.episode-card:hover.episode-card-border-green  { border-left-color: var(--ep-complete-hover); }
+.episode-card:hover.episode-card-border-blue   { border-left-color: var(--ep-high-hover); }
+.episode-card:hover.episode-card-border-orange { border-left-color: var(--ep-mid-hover); }
+.episode-card:hover.episode-card-border-red    { border-left-color: var(--ep-low-hover); }
 
 .episode-card-unmatched {
     opacity: 0.45;
@@ -1100,10 +1330,10 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     white-space: nowrap;
     line-height: 1.4;
 }
-.episode-card-badge-ended { background: rgba(107, 114, 128, 0.15); color: #9ca3af; }
-.episode-card-badge-returning { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
-.episode-card-badge-canceled { background: rgba(239, 68, 68, 0.12); color: #f87171; }
-.episode-card-badge-airing { background: rgba(37, 99, 235, 0.12); color: #60a5fa; }
+.episode-card-badge-ended     { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); }
+.episode-card-badge-returning { background: var(--info-bg);           color: var(--accent); }
+.episode-card-badge-canceled  { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); }
+.episode-card-badge-airing    { background: var(--info-bg);           color: var(--accent); }
 
 /* Thick progress bar */
 .episode-progress {
@@ -1121,10 +1351,10 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     border-radius: 4px;
     transition: width 0.3s ease;
 }
-.episode-progress-complete { background: #22c55e; }
-.episode-progress-high { background: #2563eb; }
-.episode-progress-mid { background: #f59e0b; }
-.episode-progress-low { background: #ef4444; }
+.episode-progress-complete { background: var(--ep-complete); }
+.episode-progress-high     { background: var(--ep-high); }
+.episode-progress-mid      { background: var(--ep-mid); }
+.episode-progress-low      { background: var(--ep-low); }
 
 /* Card stats row */
 .episode-card-stats-row {
@@ -1146,10 +1376,10 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     font-weight: 700;
     font-size: 0.75rem;
 }
-.episode-card-pct-green  { color: #22c55e; }
-.episode-card-pct-blue   { color: #60a5fa; }
-.episode-card-pct-orange { color: #f59e0b; }
-.episode-card-pct-red    { color: #ef4444; }
+.episode-card-pct-green  { color: var(--ep-complete); }
+.episode-card-pct-blue   { color: var(--info); }
+.episode-card-pct-orange { color: var(--ep-mid); }
+.episode-card-pct-red    { color: var(--ep-low); }
 
 /* Detail View */
 .episode-detail-header {
@@ -1175,9 +1405,9 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     border-radius: 4px;
     margin-top: 0.25rem;
 }
-.episode-detail-status-ended { background: rgba(107, 114, 128, 0.15); color: #9ca3af; }
-.episode-detail-status-returning { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
-.episode-detail-status-canceled { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+.episode-detail-status-ended     { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); }
+.episode-detail-status-returning { background: var(--info-bg);           color: var(--accent); }
+.episode-detail-status-canceled  { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); }
 
 /* Season Accordion */
 .episode-seasons {
@@ -1236,8 +1466,8 @@ h2 { font-size: 0.95rem; margin-bottom: 0.6rem; color: var(--text-muted); font-w
     padding: 0.1rem 0.4rem;
     border-radius: 6px;
 }
-.episode-season-badge.complete { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
-.episode-season-badge.missing { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.episode-season-badge.complete { background: var(--success-bg); color: var(--accent); }
+.episode-season-badge.missing  { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
 .episode-season-badge.unaired { background: rgba(107, 114, 128, 0.12); color: #6b7280; }
 
 .episode-season-episodes {

@@ -1497,39 +1497,88 @@ async function loadFluxStatus() {
     var s = await api('/api/flux/status');
     if (!s) { el.innerHTML = '<p class="text-muted">Could not load status.</p>'; return; }
 
-    var nodeStatusColor = s.node_status === 'ENABLED' ? 'var(--success)' : (s.node_status ? 'var(--warning)' : 'var(--text-dim)');
-    var networkHeight = s.network_height || 2588000;
-    var syncPct = s.block_height ? Math.min(100, (s.block_height / networkHeight * 100)).toFixed(1) : null;
-    var blockVal = s.block_height
-        ? s.block_height.toLocaleString() + (syncPct < 99.9 ? ' <span class="text-muted text-sm">(' + syncPct + '%)</span>' : '')
-        : '<span class="text-muted">—</span>';
-    var html = '<div class="plex-grid">';
-    html += _fluxStatCard('Daemon', s.running ? '<span style="color:var(--success)">Running</span>' : '<span style="color:var(--error)">Stopped</span>');
-    html += _fluxStatCard('Node Status', s.node_status ? ('<span style="color:' + nodeStatusColor + '">' + s.node_status + '</span>') : '<span class="text-muted">Pending registration</span>');
-    html += _fluxStatCard('Block Height', blockVal);
-    html += _fluxStatCard('FluxOS Version', s.version || '<span class="text-muted">—</span>');
-    html += _fluxStatCard('Docker', s.docker_running ? '<span style="color:var(--success)">Running</span>' : '<span style="color:var(--error)">Stopped</span>');
-    html += _fluxStatCard('App Containers', s.containers !== undefined ? s.containers : '—');
-    html += _fluxStatCard('API Port', s.api_port || '16127');
-    html += _fluxStatCard('Installed', s.installed ? '<span style="color:var(--success)">Yes</span>' : '<span style="color:var(--warning)">No</span>');
+    var html = '';
+
+    // --- Status header: small dot + node status text + tier ---
+    var nodeActive = s.running && s.node_status && s.node_status !== 'OFFLINE';
+    var dotClass = nodeActive ? 'dot-active' : 'dot-inactive';
+    var nodeLabel = s.node_status || (s.running ? 'REGISTERED' : 'OFFLINE');
+    var tierLabel = s.tier ? s.tier : '';
+    html += '<div class="flux-status-header">';
+    html += '<span class="flux-status-dot ' + dotClass + '"></span>';
+    html += '<span class="flux-status-node">' + nodeLabel + '</span>';
+    if (tierLabel) html += '<span class="flux-status-tier">' + tierLabel + '</span>';
     html += '</div>';
-    if (s.uptime) {
-        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">Daemon running since: ' + s.uptime + '</p>';
+
+    // --- Service health row ---
+    html += '<div class="flux-services-row">';
+    var services = [
+        { label: 'fluxd',   up: s.running },
+        { label: 'FluxOS',  up: s.fluxos_running !== false && s.running },
+        { label: 'mongod',  up: s.running },
+        { label: 'benchd',  up: s.running },
+    ];
+    services.forEach(function(svc) {
+        html += '<span class="flux-service-item">'
+            + '<span class="flux-service-dot ' + (svc.up ? 'dot-up' : 'dot-down') + '"></span>'
+            + svc.label + '</span>';
+    });
+    html += '</div>';
+
+    // --- Progress bars: block sync + explorer sync ---
+    var networkHeight = s.network_height || 0;
+    var blockHeight = s.block_height || 0;
+    var syncPct = (networkHeight > 0 && blockHeight > 0)
+        ? Math.min(100, (blockHeight / networkHeight * 100)).toFixed(1)
+        : null;
+    var explorerPct = (s.explorer_scan_height && networkHeight > 0)
+        ? Math.min(100, (s.explorer_scan_height / networkHeight * 100)).toFixed(1)
+        : null;
+
+    if (syncPct !== null || explorerPct !== null) {
+        html += '<div class="flux-progress-row">';
+        if (syncPct !== null) {
+            html += '<div class="flux-progress-item">'
+                + '<div class="flux-progress-label"><span>Block sync</span><span>' + blockHeight.toLocaleString() + ' / ' + networkHeight.toLocaleString() + '</span></div>'
+                + '<div class="flux-progress-bar"><div class="flux-progress-fill" style="width:' + syncPct + '%"></div></div>'
+                + '</div>';
+        }
+        if (explorerPct !== null) {
+            html += '<div class="flux-progress-item">'
+                + '<div class="flux-progress-label"><span>Explorer sync</span><span>' + explorerPct + '%</span></div>'
+                + '<div class="flux-progress-bar"><div class="flux-progress-fill" style="width:' + explorerPct + '%"></div></div>'
+                + '</div>';
+        }
+        html += '</div>';
     }
 
-    // Wallet section
+    // --- Node details grid ---
+    html += '<div class="flux-section-label">Node</div>';
+    html += '<div class="plex-grid">';
+    html += _fluxStatCard('Daemon', s.running ? 'Running' : '<span class="text-muted">Stopped</span>');
+    html += _fluxStatCard('Block Height', blockHeight > 0 ? blockHeight.toLocaleString() : '<span class="text-muted">—</span>');
+    html += _fluxStatCard('FluxOS Version', s.version || '<span class="text-muted">—</span>');
+    html += _fluxStatCard('App Containers', s.containers !== undefined ? s.containers : '<span class="text-muted">—</span>');
+    html += _fluxStatCard('API Port', s.api_port || '16127');
+    html += _fluxStatCard('Installed', s.installed ? 'Yes' : '<span class="text-muted">No</span>');
+    html += '</div>';
+    if (s.uptime) {
+        html += '<p class="text-muted text-sm" style="margin-bottom:0.75rem">Running since ' + s.uptime + '</p>';
+    }
+
+    // --- Wallet section ---
     var w = await api('/api/flux/wallet');
     if (w && !w.error) {
-        html += '<h3 style="margin:1.25rem 0 0.5rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim)">Wallet</h3>';
+        html += '<div class="flux-section-label">Wallet</div>';
         html += '<div class="plex-grid">';
-        html += _fluxStatCard('Wallet Balance', w.balance != null ? '<span style="color:var(--success)">' + parseFloat(w.balance).toFixed(4) + ' FLUX</span>' : '<span class="text-muted">—</span>');
-        html += _fluxStatCard('Earned Today', w.earned_today != null ? '<span style="color:var(--success)">+' + w.earned_today.toFixed(6) + ' FLUX</span>' : '<span class="text-muted">Pending</span>');
-        html += _fluxStatCard('Total Earned', w.earned_total != null ? '<span style="color:var(--success)">+' + w.earned_total.toFixed(6) + ' FLUX</span>' : '<span class="text-muted">Pending</span>');
+        html += _fluxStatCard('Balance', w.balance != null ? parseFloat(w.balance).toFixed(4) + ' FLUX' : '<span class="text-muted">—</span>');
+        html += _fluxStatCard('Earned Today', w.earned_today != null ? '+' + w.earned_today.toFixed(6) + ' FLUX' : '<span class="text-muted">Pending</span>');
+        html += _fluxStatCard('Total Earned', w.earned_total != null ? '+' + w.earned_total.toFixed(6) + ' FLUX' : '<span class="text-muted">Pending</span>');
         html += _fluxStatCard('Payouts', w.payout_count > 0 ? w.payout_count : '<span class="text-muted">None yet</span>');
         html += '</div>';
-        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">Balance includes 1,000 FLUX locked as collateral.</p>';
+        html += '<p class="text-muted text-sm">Balance includes 1,000 FLUX locked as collateral.</p>';
         if (w.last_payout) {
-            html += '<p class="text-muted text-sm" style="margin-top:0.25rem">Last payout: ' + w.last_payout + '</p>';
+            html += '<p class="text-muted text-sm" style="margin-top:0.2rem">Last payout: ' + w.last_payout + '</p>';
         }
     }
 
@@ -1596,7 +1645,7 @@ async function loadFluxDocker() {
         return '<tr><td style="font-family:monospace;font-size:0.8rem">' + (c.id || '').substring(0, 12) + '</td>'
             + '<td>' + (c.image || '') + '</td>'
             + '<td>' + (c.name || '') + '</td>'
-            + '<td style="color:var(--success)">' + (c.status || '') + '</td></tr>';
+            + '<td class="text-muted">' + (c.status || '') + '</td></tr>';
     }).join('');
     el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">'
         + '<thead><tr style="border-bottom:1px solid var(--border)">'
@@ -1616,10 +1665,13 @@ async function loadFluxBenchmark() {
         el.innerHTML = '<p class="text-muted">Benchmark daemon not responding. Check that fluxbenchd is running.</p>';
         return;
     }
-    var statusColor = b.status === 'online' ? 'var(--success)' : 'var(--warning)';
-    var html = '<div class="plex-grid">';
-    html += _fluxStatCard('Benchmark Daemon', '<span style="color:' + statusColor + '">' + (b.status || 'unknown') + '</span>');
-    html += _fluxStatCard('Tier', b.tier || '<span class="text-muted">Pending registration</span>');
+    var passed = b.passed;
+    var html = '<p class="flux-bench-result ' + (passed ? 'bench-pass' : 'bench-fail') + '">'
+        + (passed ? 'Benchmark passed' : 'Benchmark pending') + (b.tier ? ' — ' + b.tier : '') + '</p>';
+    html += '<div class="flux-section-label">Hardware</div>';
+    html += '<div class="plex-grid">';
+    html += _fluxStatCard('Daemon', b.status === 'online' ? 'Online' : '<span class="text-muted">' + (b.status || 'offline') + '</span>');
+    html += _fluxStatCard('Tier', b.tier || '<span class="text-muted">Pending</span>');
     html += _fluxStatCard('CPU Cores', b.cores || '<span class="text-muted">—</span>');
     html += _fluxStatCard('RAM', b.ram_gb ? parseFloat(b.ram_gb).toFixed(1) + ' GB' : '<span class="text-muted">—</span>');
     html += _fluxStatCard('Disk Write', b.disk_write_mbps ? parseFloat(b.disk_write_mbps).toFixed(0) + ' MB/s' : '<span class="text-muted">—</span>');
@@ -1632,7 +1684,7 @@ async function loadFluxBenchmark() {
         var detailMsg = isRegistrationError
             ? 'Waiting for node registration — benchmark will complete once collateral TX is confirmed on-chain.'
             : b.details;
-        html += '<p class="text-muted text-sm" style="margin-top:0.75rem">' + detailMsg + '</p>';
+        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">' + detailMsg + '</p>';
     }
     if (b.ran_at) html += '<p class="text-muted text-sm" style="margin-top:0.25rem">Last run: ' + b.ran_at + '</p>';
     el.innerHTML = html;
@@ -1656,8 +1708,7 @@ async function startFluxInstall() {
     var msg = document.getElementById('flux-install-msg');
     var log = document.getElementById('flux-install-log');
     if (btn) btn.disabled = true;
-    showMessage(msg, 'info', 'Starting installation...');
-    log.style.display = 'block';
+    showMessage(msg, 'Starting installation...', 'info');
     log.textContent = 'Waiting for install to begin...';
 
     var res = await api('/api/flux/install', 'POST');
@@ -1691,8 +1742,9 @@ async function loadFluxInstallLog() {
     if (!log) return;
     var res = await api('/api/flux/install/status');
     if (res && res.logs && res.logs.length > 0) {
-        log.style.display = 'block';
         log.textContent = res.logs.join('\n');
         log.scrollTop = log.scrollHeight;
+    } else {
+        log.textContent = '(no install log — press Start Installation to begin)';
     }
 }
