@@ -1,5 +1,22 @@
 # HarbourOS Changelog
 
+## v1.1.1 — Flux stability fixes (2026-05-23)
+
+### Bug Fixes
+
+- **Self-update**: `harbouros-self-update.sh` now exits immediately on any git failure (`set -euo pipefail`, `fail()` helper). Adds canary check before git operations, explicit `git fetch` and `git reset --hard` failure handling, post-reset HEAD SHA and VERSION file verification. Previously a `safe.directory` ownership error could silently leave the repo at an old revision and deploy stale code.
+- **Self-update log ownership**: `apply-update.sh` now ensures `/var/log/harbouros-self-update.log` is owned by `harbouros:harbouros` on every deploy so the admin UI can read it.
+- **Benchmark display**: Corrected `passed` field logic — `getbenchmarks` returns `status: "CUMULUS"` when passing, never `"ok"`. Fixed to treat any status other than `null`, `"failed"`, or `"running"` as passed.
+- **Watchdog defaults**: `web_hook_url` default is `'0'` (disabled) to prevent Discord webhook errors on installs without a configured webhook URL. `zelflux_update: '1'` ensures FluxOS auto-updates are enabled by default.
+
+### Infrastructure
+
+- FluxOS source patching (`harbouros-flux-patch.sh`) clarified as LEGACY/EMERGENCY USE ONLY. Standard deployments use `insightexplorer=1` which eliminates P2SH crashes without patching FluxOS source.
+- `fluxbench-cli` commands throughout use `-datadir=/var/lib/fluxbench` flag consistently.
+- `flux-cli` commands use `-datadir=/var/lib/fluxd` flag consistently.
+
+---
+
 ## v1.1.0 — Flux Node Support (2026-05-23)
 
 ### New Features
