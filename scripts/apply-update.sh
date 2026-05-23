@@ -151,6 +151,16 @@ if [ -f "${STAGING}/config/harbouros-self-update.sh" ]; then
     fi
 fi
 
+# --- Self-update log ownership ---
+# The self-update script runs as root but the log must be readable by the
+# harbouros service user so the admin UI can display it.
+SELF_UPDATE_LOG="/var/log/harbouros-self-update.log"
+if [ ! -f "${SELF_UPDATE_LOG}" ]; then
+    touch "${SELF_UPDATE_LOG}"
+fi
+chown harbouros:harbouros "${SELF_UPDATE_LOG}"
+chmod 600 "${SELF_UPDATE_LOG}"
+
 # --- Sysctl hardening ---
 if [ -f "${STAGING}/config/sysctl-hardening.conf" ]; then
     if ! diff -q "${STAGING}/config/sysctl-hardening.conf" "/etc/sysctl.d/99-harbouros.conf" >/dev/null 2>&1; then
