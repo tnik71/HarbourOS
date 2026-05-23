@@ -228,14 +228,18 @@ def check_updates():
 
 
 def run_update():
-    """Run apt-get update && apt-get upgrade -y. Returns log output."""
-    result = _run(
-        ["bash", "-c", "apt-get update -qq && apt-get upgrade -y"],
-        timeout=600,
-    )
-    success = result.returncode == 0
-    output = result.stdout if success else result.stdout + "\n" + result.stderr
-    return success, output.strip()
+    """Run apt-get update then apt-get upgrade -y. Returns log output."""
+    update_result = _run(["apt-get", "update", "-qq"], timeout=120)
+    if update_result.returncode != 0:
+        output = (update_result.stdout + "\n" + update_result.stderr).strip()
+        return False, output
+
+    upgrade_result = _run(["apt-get", "upgrade", "-y"], timeout=600)
+    success = upgrade_result.returncode == 0
+    combined = (update_result.stdout + upgrade_result.stdout).strip()
+    if not success:
+        combined += "\n" + upgrade_result.stderr.strip()
+    return success, combined
 
 
 def get_disk_details():

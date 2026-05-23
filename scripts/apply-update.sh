@@ -79,6 +79,31 @@ if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
     fi
 fi
 
+# --- Flux sudoers (update on every deploy) ---
+if [ -f "${STAGING}/config/harbouros-sudoers-flux" ]; then
+    if ! diff -q "${STAGING}/config/harbouros-sudoers-flux" "/etc/sudoers.d/harbouros-flux" >/dev/null 2>&1; then
+        echo "  Updating Flux sudoers file..."
+        install -m 400 "${STAGING}/config/harbouros-sudoers-flux" /etc/sudoers.d/harbouros-flux
+    fi
+fi
+
+# --- Flux install script ---
+if [ -f "${STAGING}/config/harbouros-flux-install.sh" ]; then
+    if ! diff -q "${STAGING}/config/harbouros-flux-install.sh" "/usr/local/bin/harbouros-flux-install.sh" >/dev/null 2>&1; then
+        echo "  Installing harbouros-flux-install.sh..."
+        install -m 755 "${STAGING}/config/harbouros-flux-install.sh" /usr/local/bin/harbouros-flux-install.sh
+    fi
+fi
+
+# --- Flux P2SH compatibility patches ---
+if [ -f "${STAGING}/config/harbouros-flux-patch.sh" ]; then
+    install -m 755 "${STAGING}/config/harbouros-flux-patch.sh" /usr/local/bin/harbouros-flux-patch.sh
+    if [ -d "/opt/flux" ]; then
+        echo "  Applying FluxOS P2SH patches..."
+        bash /usr/local/bin/harbouros-flux-patch.sh
+    fi
+fi
+
 # --- Admin UI code ---
 if [ -d "${STAGING}/harbouros_admin" ]; then
     echo "  Updating admin UI code..."

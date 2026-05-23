@@ -45,3 +45,13 @@ tools/
 
 # Runtime data (episode DB cache)
 admin-ui/harbouros_admin/data/
+
+# Flux node — machine-specific runtime files (NEVER commit)
+wallet.dat
+*.dat
+flux.conf
+fluxnode.conf
+flux_node.conf
+*.ldb
+*.sst
+migration-backup-*/
