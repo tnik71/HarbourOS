@@ -46,6 +46,10 @@ tools/
 # Runtime data (episode DB cache)
 admin-ui/harbouros_admin/data/
 
+# Environment files
+.env
+**/.env
+
 # Flux node — machine-specific runtime files (NEVER commit)
 wallet.dat
 *.dat

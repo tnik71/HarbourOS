@@ -1,5 +1,24 @@
 # HarbourOS Changelog
 
+## v1.1.2 — Code Hygiene and Flux Install Reliability (2026-05-23)
+
+### Bug Fixes
+
+- **Flux install log streaming**: `start_install()` now redirects stdout/stderr to the install log via Python file handles instead of shell redirection tokens passed as positional arguments to `subprocess.Popen`. The install log was always empty before this fix.
+
+### Security / Hygiene
+
+- **Secret ignore rules**: Added `.env` and `**/.env` patterns to `.gitignore`.
+- **System log cap**: `/api/system/logs` now enforces a 500-line server-side maximum, consistent with the Flux log endpoint.
+
+### Documentation
+
+- **README**: Added Flux CUMULUS node support to Features, Architecture, and Project Structure sections. Added Flux Node section covering hardware recommendation, Insight Explorer mode, benchmark/wallet monitoring, and Flux + Plex coexistence.
+- **apply-update.sh**: Added comment explaining `harbouros-flux.service` is intentionally excluded from the auto-deploy loop — updating the Flux daemon service definition requires manual operator action.
+- **harbouros-flux-node-watcher.sh**: Documented as a local-only recovery/debug helper. Not tracked in the repo as it is operator-specific and not safe to auto-deploy.
+
+---
+
 ## v1.1.1 — Flux stability fixes (2026-05-23)
 
 ### Bug Fixes
