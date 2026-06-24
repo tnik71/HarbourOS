@@ -79,15 +79,6 @@ if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
     fi
 fi
 
-# --- One-time migration: enable OS auto-update timer ---
-MIGRATION_OS_UPDATE="/etc/harbouros/.migration-os-autoupdate"
-if [ ! -f "${MIGRATION_OS_UPDATE}" ]; then
-    echo "  Enabling OS auto-update timer..."
-    systemctl enable harbouros-os-update.timer 2>/dev/null || true
-    systemctl start harbouros-os-update.timer 2>/dev/null || true
-    touch "${MIGRATION_OS_UPDATE}"
-fi
-
 # --- Flux sudoers (update on every deploy) ---
 if [ -f "${STAGING}/config/harbouros-sudoers-flux" ]; then
     if ! diff -q "${STAGING}/config/harbouros-sudoers-flux" "/etc/sudoers.d/harbouros-flux" >/dev/null 2>&1; then
@@ -164,6 +155,17 @@ if [ -f "${STAGING}/config/harbouros-os-update.sh" ]; then
         echo "  Updating harbouros-os-update.sh..."
         install -m 755 "${STAGING}/config/harbouros-os-update.sh" "/usr/local/bin/harbouros-os-update.sh"
     fi
+fi
+
+# --- One-time migration: enable OS auto-update timer ---
+# Placed after unit files are copied so the timer file exists before enabling.
+MIGRATION_OS_UPDATE="/etc/harbouros/.migration-os-autoupdate"
+if [ ! -f "${MIGRATION_OS_UPDATE}" ]; then
+    echo "  Enabling OS auto-update timer..."
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl enable harbouros-os-update.timer 2>/dev/null || true
+    systemctl start harbouros-os-update.timer 2>/dev/null || true
+    touch "${MIGRATION_OS_UPDATE}"
 fi
 
 # --- Self-update log ownership ---
