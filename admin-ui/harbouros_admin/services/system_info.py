@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 PLEX_UPDATE_LOG = "/var/log/harbouros-plex-update.log"
 HARBOUROS_UPDATE_STATUS = "/var/lib/harbouros/update-status.json"
 HARBOUROS_UPDATE_LOG = "/var/log/harbouros-self-update.log"
+OS_UPDATE_LOG = "/var/log/harbouros-os-update.log"
 
 _VERSION_PATHS = [
     "/opt/harbouros/repo/VERSION",
@@ -377,6 +378,20 @@ def get_harbouros_update_log():
             return f.read().strip().split("\n")
     except FileNotFoundError:
         return ["No update log found."]
+
+
+def get_os_update_log():
+    """Read the OS auto-update log file."""
+    if os.environ.get("HARBOUROS_DEV"):
+        return [
+            "2025-06-18 03:00:00 Starting OS package update...",
+            "2025-06-18 03:00:05 All packages are up to date. No action needed.",
+        ]
+    try:
+        with open(OS_UPDATE_LOG) as f:
+            return f.read().strip().split("\n")
+    except FileNotFoundError:
+        return ["No OS update log found."]
 
 
 def get_security_status(failed_login_count=0):

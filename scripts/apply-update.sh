@@ -79,6 +79,15 @@ if [ -f "${STAGING}/config/harbouros-sudoers" ]; then
     fi
 fi
 
+# --- One-time migration: enable OS auto-update timer ---
+MIGRATION_OS_UPDATE="/etc/harbouros/.migration-os-autoupdate"
+if [ ! -f "${MIGRATION_OS_UPDATE}" ]; then
+    echo "  Enabling OS auto-update timer..."
+    systemctl enable harbouros-os-update.timer 2>/dev/null || true
+    systemctl start harbouros-os-update.timer 2>/dev/null || true
+    touch "${MIGRATION_OS_UPDATE}"
+fi
+
 # --- Flux sudoers (update on every deploy) ---
 if [ -f "${STAGING}/config/harbouros-sudoers-flux" ]; then
     if ! diff -q "${STAGING}/config/harbouros-sudoers-flux" "/etc/sudoers.d/harbouros-flux" >/dev/null 2>&1; then
@@ -123,7 +132,7 @@ fi
 # NOTE: harbouros-flux.service (zelcash/fluxd) is intentionally excluded from
 # this loop. Updating the Flux daemon service definition can interrupt block
 # sync or cause node downtime. Deploy it manually when required.
-for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-self-update.service harbouros-self-update.timer harbouros-firstboot.service; do
+for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-self-update.service harbouros-self-update.timer harbouros-os-update.service harbouros-os-update.timer harbouros-firstboot.service; do
     if [ -f "${STAGING}/config/${unit}" ]; then
         if ! diff -q "${STAGING}/config/${unit}" "/etc/systemd/system/${unit}" >/dev/null 2>&1; then
             echo "  Updating ${unit}..."
@@ -146,6 +155,14 @@ if [ -f "${STAGING}/config/harbouros-self-update.sh" ]; then
     if ! diff -q "${STAGING}/config/harbouros-self-update.sh" "/usr/local/bin/harbouros-self-update.sh" >/dev/null 2>&1; then
         echo "  Updating harbouros-self-update.sh..."
         install -m 755 "${STAGING}/config/harbouros-self-update.sh" "/usr/local/bin/harbouros-self-update.sh"
+    fi
+fi
+
+# --- OS update script ---
+if [ -f "${STAGING}/config/harbouros-os-update.sh" ]; then
+    if ! diff -q "${STAGING}/config/harbouros-os-update.sh" "/usr/local/bin/harbouros-os-update.sh" >/dev/null 2>&1; then
+        echo "  Updating harbouros-os-update.sh..."
+        install -m 755 "${STAGING}/config/harbouros-os-update.sh" "/usr/local/bin/harbouros-os-update.sh"
     fi
 fi
 
