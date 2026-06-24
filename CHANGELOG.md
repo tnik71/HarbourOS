@@ -1,5 +1,19 @@
 # HarbourOS Changelog
 
+## v1.1.3 — Automatic OS Package Updates (2026-06-24)
+
+### New Features
+
+- **Automatic OS updates**: OS-level packages (Debian/apt) are now updated automatically every Wednesday at 3 AM via a new systemd timer, matching the existing pattern used for Plex and HarbourOS self-updates.
+- **OS update log viewer**: The System → Updates tab now includes a collapsible "Auto-Update Log" section showing the output of the weekly OS update runs.
+- **New API endpoint**: `/api/system/os-update-log` returns the OS auto-update log.
+
+### Deploy Infrastructure
+
+- **New files**: `harbouros-os-update.sh`, `harbouros-os-update.service`, `harbouros-os-update.timer` — deployed via the existing `apply-update.sh` pipeline.
+- **Migration**: Existing installs automatically enable the new timer on first deploy. Fresh installs via `remote-install.sh` also set it up.
+- **CLAUDE.md**: Added project instructions file for Claude Code.
+
 ## v1.1.2 — Flux Integrity, Design System, and Reliability (2026-05-23)
 
 ### Flux Integrity

@@ -163,6 +163,13 @@ cp "${STAGING}/config/harbouros-self-update.service" /etc/systemd/system/harbour
 cp "${STAGING}/config/harbouros-self-update.timer" /etc/systemd/system/harbouros-self-update.timer
 systemctl enable harbouros-self-update.timer
 
+# Install OS auto-update infrastructure
+echo "  Setting up OS auto-update..."
+install -m 755 "${STAGING}/config/harbouros-os-update.sh" /usr/local/bin/harbouros-os-update.sh
+cp "${STAGING}/config/harbouros-os-update.service" /etc/systemd/system/harbouros-os-update.service
+cp "${STAGING}/config/harbouros-os-update.timer" /etc/systemd/system/harbouros-os-update.timer
+systemctl enable harbouros-os-update.timer
+
 # Clone the repo for future self-updates
 if [ ! -d /opt/harbouros/repo/.git ]; then
     echo "  Cloning HarbourOS repo for auto-updates..."

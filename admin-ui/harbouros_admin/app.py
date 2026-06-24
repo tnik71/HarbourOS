@@ -200,6 +200,11 @@ def create_app():
         status_code = 200 if success else 500
         return jsonify({"success": success, "output": output}), status_code
 
+    @app.route("/api/system/os-update-log")
+    @login_required
+    def api_os_update_log():
+        return jsonify({"logs": system_info.get_os_update_log()})
+
     @app.route("/api/system/disk")
     @login_required
     def api_disk_details():

@@ -830,6 +830,31 @@ async function runSystemUpdate() {
     }
 }
 
+/* === OS Auto-Update Log === */
+var _osUpdateLogLoaded = false;
+async function toggleOsUpdateLog() {
+    var el = document.getElementById('os-update-log');
+    var arrow = document.getElementById('os-update-log-arrow');
+    if (!el) return;
+    if (el.style.display === 'none') {
+        el.style.display = 'block';
+        if (arrow) arrow.innerHTML = '&#9660;';
+        if (!_osUpdateLogLoaded) {
+            var res = await api('/api/system/os-update-log');
+            if (res && res.logs) {
+                el.textContent = res.logs.join('\n');
+                el.scrollTop = el.scrollHeight;
+            } else {
+                el.textContent = 'No log available.';
+            }
+            _osUpdateLogLoaded = true;
+        }
+    } else {
+        el.style.display = 'none';
+        if (arrow) arrow.innerHTML = '&#9654;';
+    }
+}
+
 /* === HarbourOS Self-Update === */
 async function checkHarbourOSUpdate() {
     var el = document.getElementById('harbouros-update-status');
