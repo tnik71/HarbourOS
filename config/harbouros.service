@@ -21,6 +21,7 @@ RestartSec=5
 TimeoutStartSec=30
 TimeoutStopSec=10
 Environment=PYTHONPATH=/opt/harbouros
+EnvironmentFile=-/etc/harbouros/harbouros.env
 
 [Install]
 WantedBy=multi-user.target

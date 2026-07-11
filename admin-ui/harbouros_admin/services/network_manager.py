@@ -2,10 +2,14 @@
 
 import ipaddress
 import os
+import re
 import socket
 import subprocess
 
 import psutil
+
+_HOSTNAME_RE = re.compile(r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$')
+_INTERFACE_RE = re.compile(r'^[a-z][a-z0-9]{0,14}$')
 
 DHCPCD_CONF = "/etc/dhcpcd.conf"
 
@@ -93,6 +97,9 @@ def get_network_info():
 
 def set_hostname(new_hostname):
     """Update the system hostname."""
+    if not new_hostname or not _HOSTNAME_RE.match(new_hostname):
+        return False, "Invalid hostname. Use only letters, digits, and hyphens (2-63 chars, cannot start/end with hyphen)."
+
     if os.environ.get("HARBOUROS_DEV"):
         return True, f"Hostname would be set to: {new_hostname}"
 
@@ -108,6 +115,9 @@ def set_hostname(new_hostname):
 def set_network_config(mode, interface="eth0", ip=None, netmask=None,
                        gateway=None, dns=None):
     """Set network to static or DHCP mode via dhcpcd.conf."""
+    if not _INTERFACE_RE.match(interface):
+        return False, "Invalid interface name."
+
     if os.environ.get("HARBOUROS_DEV"):
         if mode == "static":
             return True, f"Would set {interface} to static IP {ip} (dev mode)"
@@ -147,11 +157,14 @@ def set_network_config(mode, interface="eth0", ip=None, netmask=None,
         except (ipaddress.AddressValueError, ValueError) as e:
             return False, f"Invalid IP address: {e}"
         if dns:
+            validated_dns = []
             for d in dns.replace(",", " ").split():
                 try:
                     ipaddress.IPv4Address(d.strip())
+                    validated_dns.append(d.strip())
                 except (ipaddress.AddressValueError, ValueError):
                     return False, f"Invalid DNS address: {d.strip()}"
+            dns = " ".join(validated_dns)
         prefix = sum(bin(int(x)).count("1") for x in netmask.split("."))
         block = (
             f"\ninterface {interface}\n"

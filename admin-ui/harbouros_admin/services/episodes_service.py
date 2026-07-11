@@ -12,7 +12,7 @@ from . import plex_service
 log = logging.getLogger(__name__)
 
 EPISODE_DB_API = "https://harbouros.eu/db/api.php"
-EPISODE_DB_SECRET = "c65f3345d88f8da55c76fd7d7a032e39"
+EPISODE_DB_SECRET = os.environ.get("HARBOUROS_EPISODE_DB_KEY", "")
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 LOCAL_DB_PATH = os.path.join(DATA_DIR, "episode-db.json")
 SCAN_RESULTS_PATH = os.path.join(DATA_DIR, "scan-results.json")
