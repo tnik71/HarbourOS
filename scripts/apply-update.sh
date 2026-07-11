@@ -123,7 +123,7 @@ fi
 # NOTE: harbouros-flux.service (zelcash/fluxd) is intentionally excluded from
 # this loop. Updating the Flux daemon service definition can interrupt block
 # sync or cause node downtime. Deploy it manually when required.
-for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-self-update.service harbouros-self-update.timer harbouros-os-update.service harbouros-os-update.timer harbouros-firstboot.service; do
+for unit in harbouros.service harbouros-plex-update.service harbouros-plex-update.timer harbouros-self-update.service harbouros-self-update.timer harbouros-os-update.service harbouros-os-update.timer harbouros-flux-ipwatch.service harbouros-flux-ipwatch.timer harbouros-firstboot.service; do
     if [ -f "${STAGING}/config/${unit}" ]; then
         if ! diff -q "${STAGING}/config/${unit}" "/etc/systemd/system/${unit}" >/dev/null 2>&1; then
             echo "  Updating ${unit}..."
@@ -155,6 +155,31 @@ if [ -f "${STAGING}/config/harbouros-os-update.sh" ]; then
         echo "  Updating harbouros-os-update.sh..."
         install -m 755 "${STAGING}/config/harbouros-os-update.sh" "/usr/local/bin/harbouros-os-update.sh"
     fi
+fi
+
+# --- Flux IP watch script ---
+if [ -f "${STAGING}/config/harbouros-flux-ipwatch.sh" ]; then
+    if ! diff -q "${STAGING}/config/harbouros-flux-ipwatch.sh" "/usr/local/bin/harbouros-flux-ipwatch.sh" >/dev/null 2>&1; then
+        echo "  Updating harbouros-flux-ipwatch.sh..."
+        install -m 755 "${STAGING}/config/harbouros-flux-ipwatch.sh" "/usr/local/bin/harbouros-flux-ipwatch.sh"
+    fi
+fi
+
+# --- One-time migration: enable Flux IP watch timer ---
+MIGRATION_FLUX_IPWATCH="/etc/harbouros/.migration-flux-ipwatch"
+if [ ! -f "${MIGRATION_FLUX_IPWATCH}" ]; then
+    echo "  Enabling Flux IP watch timer..."
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl enable harbouros-flux-ipwatch.timer 2>/dev/null || true
+    systemctl start harbouros-flux-ipwatch.timer 2>/dev/null || true
+    # Also fix watchdog FLUXOS_PATH drop-in so it can auto-update FluxOS
+    mkdir -p /etc/systemd/system/pm2-root.service.d
+    cat > /etc/systemd/system/pm2-root.service.d/fluxos-path.conf << 'DROPIN'
+[Service]
+Environment=FLUXOS_PATH=/opt/flux
+DROPIN
+    systemctl daemon-reload 2>/dev/null || true
+    touch "${MIGRATION_FLUX_IPWATCH}"
 fi
 
 # --- One-time migration: enable OS auto-update timer ---
