@@ -191,7 +191,7 @@ async function updateFluxWidget() {
     }
 
     grid.innerHTML =
-        '<div><div class="widget-stat-value" style="color:' + nodeStatusColor + ';font-size:0.85rem">' + nodeStatusText + '</div><div class="widget-stat-label">Node Status</div></div>' +
+        '<div><div class="widget-stat-value" style="color:' + nodeStatusColor + ';font-size:0.85rem">' + esc(nodeStatusText) + '</div><div class="widget-stat-label">Node Status</div></div>' +
         '<div><div class="widget-stat-value" style="font-size:0.85rem">' + balanceText + '</div><div class="widget-stat-label">Balance (FLUX)</div></div>' +
         '<div><div class="widget-stat-value" style="font-size:0.85rem">' + earnedText + '</div><div class="widget-stat-label">' + earnedLabel + '</div></div>';
 
@@ -617,7 +617,7 @@ async function scanNetwork() {
     devicesEl.innerHTML = '<div class="device-list">' +
         res.devices.map(function(d) {
             var badges = d.services.map(function(s) {
-                return '<span class="badge badge-' + s + '">' + s.toUpperCase() + '</span>';
+                return '<span class="badge badge-' + esc(s) + '">' + esc(s).toUpperCase() + '</span>';
             }).join('');
             return '<div class="device-item" data-addr="' + esc(d.address) + '" onclick="selectDevice(\'' +
                 esc(d.address) + '\',\'' + esc(d.name) + '\',' +
@@ -1531,8 +1531,8 @@ async function loadFluxStatus() {
     var tierLabel = s.tier ? s.tier : '';
     html += '<div class="flux-status-header">';
     html += '<span class="flux-status-dot ' + dotClass + '"></span>';
-    html += '<span class="flux-status-node">' + nodeLabel + '</span>';
-    if (tierLabel) html += '<span class="flux-status-tier">' + tierLabel + '</span>';
+    html += '<span class="flux-status-node">' + esc(nodeLabel) + '</span>';
+    if (tierLabel) html += '<span class="flux-status-tier">' + esc(tierLabel) + '</span>';
     html += '</div>';
 
     // --- Service health row ---
@@ -1667,10 +1667,10 @@ async function loadFluxDocker() {
         return;
     }
     var rows = d.containers.map(function(c) {
-        return '<tr><td style="font-family:monospace;font-size:0.8rem">' + (c.id || '').substring(0, 12) + '</td>'
-            + '<td>' + (c.image || '') + '</td>'
-            + '<td>' + (c.name || '') + '</td>'
-            + '<td class="text-muted">' + (c.status || '') + '</td></tr>';
+        return '<tr><td style="font-family:monospace;font-size:0.8rem">' + esc((c.id || '').substring(0, 12)) + '</td>'
+            + '<td>' + esc(c.image || '') + '</td>'
+            + '<td>' + esc(c.name || '') + '</td>'
+            + '<td class="text-muted">' + esc(c.status || '') + '</td></tr>';
     }).join('');
     el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">'
         + '<thead><tr style="border-bottom:1px solid var(--border)">'
@@ -1692,11 +1692,11 @@ async function loadFluxBenchmark() {
     }
     var passed = b.passed;
     var html = '<p class="flux-bench-result ' + (passed ? 'bench-pass' : 'bench-fail') + '">'
-        + (passed ? 'Benchmark passed' : 'Benchmark pending') + (b.tier ? ' — ' + b.tier : '') + '</p>';
+        + (passed ? 'Benchmark passed' : 'Benchmark pending') + (b.tier ? ' — ' + esc(b.tier) : '') + '</p>';
     html += '<div class="flux-section-label">Hardware</div>';
     html += '<div class="plex-grid">';
-    html += _fluxStatCard('Daemon', b.status === 'online' ? 'Online' : '<span class="text-muted">' + (b.status || 'offline') + '</span>');
-    html += _fluxStatCard('Tier', b.tier || '<span class="text-muted">Pending</span>');
+    html += _fluxStatCard('Daemon', b.status === 'online' ? 'Online' : '<span class="text-muted">' + esc(b.status || 'offline') + '</span>');
+    html += _fluxStatCard('Tier', b.tier ? esc(b.tier) : '<span class="text-muted">Pending</span>');
     html += _fluxStatCard('CPU Cores', b.cores || '<span class="text-muted">—</span>');
     html += _fluxStatCard('RAM', b.ram_gb ? parseFloat(b.ram_gb).toFixed(1) + ' GB' : '<span class="text-muted">—</span>');
     html += _fluxStatCard('Disk Write', b.disk_write_mbps ? parseFloat(b.disk_write_mbps).toFixed(0) + ' MB/s' : '<span class="text-muted">—</span>');
@@ -1709,9 +1709,9 @@ async function loadFluxBenchmark() {
         var detailMsg = isRegistrationError
             ? 'Waiting for node registration — benchmark will complete once collateral TX is confirmed on-chain.'
             : b.details;
-        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">' + detailMsg + '</p>';
+        html += '<p class="text-muted text-sm" style="margin-top:0.5rem">' + esc(detailMsg) + '</p>';
     }
-    if (b.ran_at) html += '<p class="text-muted text-sm" style="margin-top:0.25rem">Last run: ' + b.ran_at + '</p>';
+    if (b.ran_at) html += '<p class="text-muted text-sm" style="margin-top:0.25rem">Last run: ' + esc(b.ran_at) + '</p>';
     el.innerHTML = html;
 }
 

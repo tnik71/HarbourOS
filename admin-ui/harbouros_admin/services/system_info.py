@@ -39,6 +39,11 @@ MONITORED_SERVICES = [
     "fail2ban",
 ]
 
+_ALLOWED_LOG_SERVICES = {
+    "all", "plexmediaserver", "harbouros", "avahi-daemon", "sshd",
+    "fail2ban", "zelcash", "fluxbenchd", "docker", "mongod",
+}
+
 
 from .utils import _sudo
 
@@ -184,6 +189,8 @@ def power_action(action):
 
 def get_system_logs(service="all", lines=100):
     """Read system logs from journalctl."""
+    if service and service not in _ALLOWED_LOG_SERVICES:
+        return [f"Service '{service}' is not in the allowed list."]
     cmd = ["journalctl", "-n", str(lines), "--no-pager", "-o", "short-iso"]
     if service and service != "all":
         cmd.extend(["-u", service])

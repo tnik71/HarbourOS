@@ -1,16 +1,39 @@
 # HarbourOS — Targeted sudo access for the harbouros service user
 # Installed to /etc/sudoers.d/harbouros
+# Security: no unbounded wildcards — every rule is scoped to specific services/paths.
 
-# Systemd service management
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl enable *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl disable *
+# Systemd — managed services only
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start plexmediaserver
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start harbouros
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start zelcash
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start fluxbenchd
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl start *.mount
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop plexmediaserver
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop harbouros
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop zelcash
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop fluxbenchd
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl stop *.mount
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart plexmediaserver
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart harbouros
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart zelcash
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl restart fluxbenchd
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl enable plexmediaserver
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl enable harbouros
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl enable *.mount
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl enable *.automount
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl disable --now *.mount
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl disable --now *.automount
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl daemon-reload
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl status *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active plexmediaserver
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active harbouros
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active zelcash
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active fluxbenchd
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active docker
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active fail2ban
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active avahi-daemon
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active sshd
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show plexmediaserver --property *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show zelcash --property *
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
 
@@ -30,6 +53,7 @@ harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/systemd/system/*.mount
 harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/systemd/system/*.automount
 
 # SMB credentials
+harbouros ALL=(root) NOPASSWD: /usr/bin/install -m 600 /dev/null /etc/harbouros/smb-*.creds
 harbouros ALL=(root) NOPASSWD: /usr/bin/tee /etc/harbouros/smb-*.creds
 harbouros ALL=(root) NOPASSWD: /usr/bin/rm /etc/harbouros/smb-*.creds
 harbouros ALL=(root) NOPASSWD: /usr/bin/chmod 600 /etc/harbouros/smb-*
@@ -48,24 +72,27 @@ harbouros ALL=(root) NOPASSWD: /usr/local/bin/harbouros-plex-update.sh
 # Plex preferences (read-only for token extraction)
 harbouros ALL=(root) NOPASSWD: /usr/bin/cat /var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml
 
-# Package management
+# Package management — exact commands, no trailing wildcards
 harbouros ALL=(root) NOPASSWD: /usr/bin/apt list --upgradable
-harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get update *
-harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get upgrade *
+harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get update
+harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get upgrade -y
 
-# System info and diagnostics
+# System info — scoped to specific tools and paths
 harbouros ALL=(root) NOPASSWD: /usr/bin/sysctl --system
-harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl *
-harbouros ALL=(root) NOPASSWD: /usr/bin/lsblk *
-harbouros ALL=(root) NOPASSWD: /usr/bin/dpkg-query *
-harbouros ALL=(root) NOPASSWD: /usr/bin/tail *
+harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl -n * --no-pager -o short-iso
+harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl -n * --no-pager -o short-iso -u *
+harbouros ALL=(root) NOPASSWD: /usr/bin/lsblk -J -o *
+harbouros ALL=(root) NOPASSWD: /usr/bin/dpkg-query -W -f * plexmediaserver
+harbouros ALL=(root) NOPASSWD: /usr/bin/tail -n * /var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log
+harbouros ALL=(root) NOPASSWD: /usr/bin/tail -n * /var/log/harbouros-flux-install.log
 
 # Power management
-harbouros ALL=(root) NOPASSWD: /usr/sbin/shutdown *
+harbouros ALL=(root) NOPASSWD: /usr/sbin/shutdown -h now
 harbouros ALL=(root) NOPASSWD: /usr/sbin/reboot
 
-# NAS discovery
-harbouros ALL=(root) NOPASSWD: /usr/bin/showmount *
-harbouros ALL=(root) NOPASSWD: /usr/bin/smbclient *
-harbouros ALL=(root) NOPASSWD: /usr/bin/avahi-browse *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemd-escape *
+# NAS discovery — scoped flags
+harbouros ALL=(root) NOPASSWD: /usr/bin/showmount -e *
+harbouros ALL=(root) NOPASSWD: /usr/bin/smbclient -L //* -N
+harbouros ALL=(root) NOPASSWD: /usr/bin/smbclient -L //* -U * --password *
+harbouros ALL=(root) NOPASSWD: /usr/bin/avahi-browse -tprk *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemd-escape --path *

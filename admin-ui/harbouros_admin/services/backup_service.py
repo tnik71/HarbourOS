@@ -103,8 +103,7 @@ def restore_backup(fileobj):
                     log.warning("Restore: skipping non-regular member %s", member.name)
                     continue
 
-                # Restore absolute path by prepending /
-                abs_path = "/" + member.name.lstrip("/")
+                abs_path = os.path.normpath("/" + member.name.lstrip("/"))
 
                 # Safety: only allow paths we expect.
                 # Use exact match for files and prefix match (with trailing /)

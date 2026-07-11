@@ -75,6 +75,8 @@ def _validate_share(share):
         raise ValueError("Share path is required")
     if '..' in share:
         raise ValueError("Share path cannot contain '..'")
+    if '\n' in share or '\r' in share:
+        raise ValueError("Share path cannot contain newlines")
     return share
 
 
@@ -176,11 +178,12 @@ def _write_smb_credentials(mount):
     if mount["type"] != "smb":
         return
     creds_file = os.path.join(CONFIG_DIR, f"smb-{_sanitize_name(mount['name'])}.creds")
-    content = (
-        f"username={mount.get('username', '')}\n"
-        f"password={mount.get('password', '')}\n"
-        f"domain={mount.get('domain', 'WORKGROUP')}\n"
-    )
+    def _strip_cred(val):
+        return val.replace('\n', '').replace('\r', '')
+    username = _strip_cred(mount.get('username', ''))
+    password = _strip_cred(mount.get('password', ''))
+    domain = _strip_cred(mount.get('domain', 'WORKGROUP'))
+    content = f"username={username}\npassword={password}\ndomain={domain}\n"
     if os.getuid() != 0 and not os.environ.get("HARBOUROS_DEV"):
         # Create the file with restricted permissions first, then write content.
         # This avoids a window where the file exists world-readable between
@@ -396,6 +399,11 @@ def unmount_share(mount_id):
 
 def test_connection(host, mount_type, share=None):
     """Test NAS connectivity."""
+    try:
+        host = _validate_host(host)
+    except ValueError as e:
+        return False, str(e)
+
     if os.environ.get("HARBOUROS_DEV"):
         return True, f"Connection to {host} successful (dev mode)"
 
@@ -477,6 +485,11 @@ def discover_devices():
 
 def discover_shares(host, share_type, username=None, password=None):
     """List available shares from a NAS host."""
+    try:
+        host = _validate_host(host)
+    except ValueError:
+        return []
+
     if os.environ.get("HARBOUROS_DEV"):
         if share_type == "nfs":
             return [
