@@ -32,8 +32,8 @@ harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active docker
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active fail2ban
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active avahi-daemon
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl is-active sshd
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show plexmediaserver --property *
-harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show zelcash --property *
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show plexmediaserver --property=*
+harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl show zelcash --property=*
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl poweroff
 harbouros ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
 
