@@ -75,6 +75,7 @@ harbouros ALL=(root) NOPASSWD: /usr/bin/cat /var/lib/plexmediaserver/Library/App
 # Package management — exact commands, no trailing wildcards
 harbouros ALL=(root) NOPASSWD: /usr/bin/apt list --upgradable
 harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get update
+harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get update -qq
 harbouros ALL=(root) NOPASSWD: /usr/bin/apt-get upgrade -y
 
 # System info — scoped to specific tools and paths
@@ -82,6 +83,7 @@ harbouros ALL=(root) NOPASSWD: /usr/bin/sysctl --system
 harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl -n * --no-pager -o short-iso
 harbouros ALL=(root) NOPASSWD: /usr/bin/journalctl -n * --no-pager -o short-iso -u *
 harbouros ALL=(root) NOPASSWD: /usr/bin/lsblk -J -o *
+harbouros ALL=(root) NOPASSWD: /usr/bin/dpkg-query -W -f=* plexmediaserver
 harbouros ALL=(root) NOPASSWD: /usr/bin/dpkg-query -W -f * plexmediaserver
 harbouros ALL=(root) NOPASSWD: /usr/bin/tail -n * /var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log
 harbouros ALL=(root) NOPASSWD: /usr/bin/tail -n * /var/log/harbouros-flux-install.log
